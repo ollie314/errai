@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -69,7 +69,7 @@ public class IfBlockBuilderImpl extends AbstractStatementBuilder implements Cont
 
   @Override
   public BlockBuilder<ElseBlockBuilder> if_(BooleanOperator op, Object rhs) {
-    Statement rhsStatement = GenUtil.generate(context, rhs);
+    final Statement rhsStatement = GenUtil.generate(context, rhs);
     return if_(new BooleanExpressionBuilder(rhsStatement, op));
   }
 
@@ -113,10 +113,7 @@ public class IfBlockBuilderImpl extends AbstractStatementBuilder implements Cont
 
   @Override
   public BlockBuilder<ElseBlockBuilder> elseif_(Statement lhs, BooleanOperator op, Statement rhs) {
-    if (lhs.getType() == null)
-      lhs.generate(context);
-
-    IfBlock elseIfBlock = new IfBlock(new BooleanExpressionBuilder(lhs, rhs, op));
+    final IfBlock elseIfBlock = new IfBlock(new BooleanExpressionBuilder(lhs, rhs, op));
     ifBlock.setElseIfBlock(elseIfBlock);
     return elseif_(elseIfBlock);
   }

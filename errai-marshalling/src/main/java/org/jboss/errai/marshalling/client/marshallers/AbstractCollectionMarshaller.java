@@ -1,12 +1,12 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -60,6 +60,8 @@ public abstract class AbstractCollectionMarshaller<C extends Collection> extends
     if (array == null) return null;
 
     final String assumedElementType = ctx.getAssumedElementType();
+    // the assumed element type can only be used once since it is not set for nested collections.
+    ctx.setAssumedElementType(null);
 
     for (int i = 0; i < array.size(); i++) {
       final EJValue elem = array.get(i);
@@ -80,8 +82,6 @@ public abstract class AbstractCollectionMarshaller<C extends Collection> extends
           type = ctx.determineTypeFor(null, elem);
         }
 
-        // the assumed element type can only be used once since it is not set for nested collections.
-        ctx.setAssumedElementType(null);
         final Marshaller<Object> marshallerInstance = ctx.getMarshallerInstance(type);
         if (marshallerInstance == null) {
           throw new RuntimeException("no marshaller for type: " + type);

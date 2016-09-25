@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.codegen;
 
 import static org.jboss.errai.codegen.util.PrettyPrinter.prettyPrintJava;
@@ -129,9 +145,9 @@ public final class SnapshotMaker {
       final Class<?> typeToExtend,
       final MethodBodyCallback methodBodyCallback,
       final Class<?> ... typesToRecurseOn) {
-    MetaClass metaTypeToSnapshot = MetaClassFactory.get(typeToSnapshot);
-    MetaClass metaTypeToExtend = MetaClassFactory.get(typeToExtend);
-    MetaClass[] metaTypesToRecurseOn = new MetaClass[typesToRecurseOn.length];
+    final MetaClass metaTypeToSnapshot = MetaClassFactory.get(typeToSnapshot);
+    final MetaClass metaTypeToExtend = MetaClassFactory.get(typeToExtend);
+    final MetaClass[] metaTypesToRecurseOn = new MetaClass[typesToRecurseOn.length];
     for (int i = 0; i < typesToRecurseOn.length; i++) {
       metaTypesToRecurseOn[i] = MetaClassFactory.get(typesToRecurseOn[i]);
     }
@@ -276,7 +292,7 @@ public final class SnapshotMaker {
         final AnonymousClassStructureBuilder builder = ObjectBuilder.newInstanceOf(typeToExtend.getErased(), context)
             .extend();
         unfinishedSnapshots.add(o);
-        for (MetaMethod method : sortedMethods) {
+        for (final MetaMethod method : sortedMethods) {
           if (method.isFinal() || method.getName().equals("toString")) continue;
 
           if (logger.isDebugEnabled()) {
@@ -285,7 +301,7 @@ public final class SnapshotMaker {
           }
 
           if (methodBodyCallback != null) {
-            Statement providedMethod = methodBodyCallback.generateMethodBody(method, o, builder);
+            final Statement providedMethod = methodBodyCallback.generateMethodBody(method, o, builder);
             if (providedMethod != null) {
               logger.debug("    body provided by callback");
               builder
@@ -311,7 +327,7 @@ public final class SnapshotMaker {
                     " because they cannot be snapshotted.");
           }
 
-          if (method.getReturnType().equals(void.class)) {
+          if (method.getReturnType().equals(MetaClassFactory.get(void.class))) {
             builder.publicOverridesMethod(method.getName()).finish();
             if (logger.isDebugEnabled()) {
               logger.debug("  finished method " + method.getName());
@@ -358,15 +374,15 @@ public final class SnapshotMaker {
             builder.publicOverridesMethod(method.getName()).append(methodBody).finish();
             existingSnapshots.put(retval, methodBody);
           }
-          catch (GenerationException e) {
+          catch (final GenerationException e) {
             e.appendFailureInfo("In attempt to snapshot return value of "
                 + typeToExtend.getFullyQualifiedName() + "." + method.getName() + "()");
             throw e;
           }
-          catch (RuntimeException e) {
+          catch (final RuntimeException e) {
             throw e;
           }
-          catch (Exception e) {
+          catch (final Exception e) {
             throw new GenerationException("Failed to extract value for snapshot", e);
           }
         }
@@ -377,15 +393,15 @@ public final class SnapshotMaker {
 
         try {
           generatedCache = prettyPrintJava(builder.finish().toJavaString());
-        } catch (NotLiteralizableException e) {
-          MetaMethod m = methodReturnVals.get(e.getNonLiteralizableObject());
+        } catch (final NotLiteralizableException e) {
+          final MetaMethod m = methodReturnVals.get(e.getNonLiteralizableObject());
           if (m != null) {
             e.appendFailureInfo("This value came from method " +
                   m.getDeclaringClass().getFullyQualifiedNameWithTypeParms() + "." + m.getName() +
                   ", which has return type " + m.getReturnType());
           }
           throw e;
-        } catch (GenerationException e) {
+        } catch (final GenerationException e) {
           e.appendFailureInfo("While generating a snapshot of " + o.toString() +
               " (actual type: " + o.getClass().getName() +
               "; type to extend: " + typeToExtend.getFullyQualifiedName() + ")");

@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +15,10 @@
  */
 
 package org.jboss.errai.codegen.builder.callstack;
+
+import static org.jboss.errai.codegen.CallParameters.fromStatements;
+
+import java.util.Arrays;
 
 import org.jboss.errai.codegen.CallParameters;
 import org.jboss.errai.codegen.Context;
@@ -29,10 +33,6 @@ import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.MetaType;
 import org.jboss.errai.codegen.meta.MetaTypeVariable;
 import org.jboss.errai.codegen.util.GenUtil;
-
-import java.util.Arrays;
-
-import static org.jboss.errai.codegen.CallParameters.fromStatements;
 
 /**
  * @author Mike Brock <cbrock@redhat.com>
@@ -70,19 +70,18 @@ public class MethodCall extends AbstractCallElement {
 
       if (method == null) {
         if (context.isPermissiveMode()) {
-          final UndefinedMethodException udme = new UndefinedMethodException(statement.getType(), methodName, parameterTypes);
-          GenUtil.rewriteBlameStackTrace(blame);
-          udme.initCause(blame);
-          udme.printStackTrace();
-
+          try {
+            blameAndRethrow( new UndefinedMethodException(statement.getType(), methodName, parameterTypes) );
+          }
+          catch (final Exception e) {
+            e.printStackTrace();
+          }
+          
           dummyReturn(writer, context);
           return;
         }
         else {
-          final UndefinedMethodException udme = new UndefinedMethodException(statement.getType(), methodName, parameterTypes);
-          GenUtil.rewriteBlameStackTrace(blame);
-          udme.initCause(blame);
-          throw udme;
+          throw new UndefinedMethodException(statement.getType(), methodName, parameterTypes);
         }
       }
 
@@ -114,10 +113,10 @@ public class MethodCall extends AbstractCallElement {
 
       nextOrReturn(writer, context, statement);
     }
-    catch (GenerationException ge) {
+    catch (final GenerationException ge) {
       blameAndRethrow(ge);
     }
-    catch (Exception e) {
+    catch (final Exception e) {
       throw new RuntimeException("error generating method call for: " + methodName
               + "(" + Arrays.toString(parameters) + ")", e);
     }

@@ -1,8 +1,25 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.bus.client.api;
 
-import com.google.gwt.junit.client.GWTTestCase;
 import org.jboss.errai.common.client.api.tasks.AsyncTask;
 import org.jboss.errai.common.client.api.tasks.HasAsyncTaskRef;
+
+import com.google.gwt.junit.client.GWTTestCase;
 
 /**
  * Abstract test that covers the contract of the AsyncTask interface. Tests for client-side AsyncTask implementations
@@ -99,7 +116,7 @@ public abstract class AbstractAsyncTaskTest extends GWTTestCase {
   protected abstract void runAfterTaskFinished(Runnable r);
 
   public void testCancellationFlag() throws Exception {
-    AsyncTask task = getTaskUnderTest(new CountingRunnable());
+    final AsyncTask task = getTaskUnderTest(new CountingRunnable());
     task.cancel(false);
     assertTrue(task.isCancelled());
   }
@@ -118,15 +135,15 @@ public abstract class AbstractAsyncTaskTest extends GWTTestCase {
   }
 
   public void testExitHandlerRunsImmediatelyOnCancelledTask() throws Exception {
-    AsyncTask task = getTaskUnderTest(new CountingRunnable());
+    final AsyncTask task = getTaskUnderTest(new CountingRunnable());
     task.cancel(false);
-    CountingRunnable cr = new CountingRunnable();
+    final CountingRunnable cr = new CountingRunnable();
     task.setExitHandler(cr);
     assertEquals(1, cr.getRunCount());
   }
 
   public void testMultipleExitHandlersBeforeTaskFinished() throws Exception {
-    AsyncTask task = getTaskUnderTest(new CountingRunnable());
+    final AsyncTask task = getTaskUnderTest(new CountingRunnable());
 
     final CountingRunnable cr1 = new CountingRunnable();
     task.setExitHandler(cr1);
@@ -135,7 +152,7 @@ public abstract class AbstractAsyncTaskTest extends GWTTestCase {
       task.setExitHandler(cr2);
       fail("Expected IllegalStateException");
     }
-    catch (IllegalStateException e) {
+    catch (final IllegalStateException e) {
       // expected
     }
 
@@ -151,7 +168,7 @@ public abstract class AbstractAsyncTaskTest extends GWTTestCase {
   }
 
   public void testAddExitHandlerBeforeTaskFinished() throws Exception {
-    AsyncTask task = getTaskUnderTest(new CountingRunnable());
+    final AsyncTask task = getTaskUnderTest(new CountingRunnable());
 
     final CountingRunnable cr = new CountingRunnable();
     task.setExitHandler(cr);
@@ -167,7 +184,7 @@ public abstract class AbstractAsyncTaskTest extends GWTTestCase {
   }
 
   public void testAddExitHandlerForFailingTask() throws Exception {
-    AsyncTask task = getTaskUnderTest(new CountingRunnable(BLOW_UP));
+    final AsyncTask task = getTaskUnderTest(new CountingRunnable(BLOW_UP));
 
     final CountingRunnable cr = new CountingRunnable();
     task.setExitHandler(cr);
@@ -221,8 +238,8 @@ public abstract class AbstractAsyncTaskTest extends GWTTestCase {
   }
 
   public void testAsyncTaskRefInjection() throws Exception {
-    CountingRunnable runnable = new CountingRunnable();
-    AsyncTask task = getTaskUnderTest(runnable);
+    final CountingRunnable runnable = new CountingRunnable();
+    final AsyncTask task = getTaskUnderTest(runnable);
     assertNotNull("No AsyncTask was injected into runnable", runnable.getAsyncTask());
     assertSame("Wrong AsyncTask injected into runnable", task, runnable.getAsyncTask());
   }

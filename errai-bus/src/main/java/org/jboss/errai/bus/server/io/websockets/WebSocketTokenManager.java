@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 JBoss, by Red Hat, Inc
+ * Copyright (C) 2012 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,12 +20,8 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-
-import javax.annotation.concurrent.GuardedBy;
 
 import org.jboss.errai.bus.client.api.QueueSession;
-import org.jboss.errai.bus.server.api.ServerMessageBus;
 import org.jboss.errai.bus.server.util.SecureHashUtil;
 import org.slf4j.Logger;
 
@@ -40,7 +36,6 @@ public final class WebSocketTokenManager {
   private static final String TOKEN_STORE = WebSocketTokenManager.class.getName() + ":Store";
 
   @SuppressWarnings({"unchecked", "SynchronizationOnLocalVariableOrMethodParameter"})
-  @GuardedBy("session")
   public static String getNewOneTimeToken(final QueueSession session) {
     synchronized (session) {
       List tokenStore = session.getAttribute(List.class, TOKEN_STORE);
@@ -62,7 +57,6 @@ public final class WebSocketTokenManager {
   }
 
   @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-  @GuardedBy("session")
   public static boolean verifyOneTimeToken(final QueueSession session, final String token) {
     synchronized (session) {
       final boolean tokenRemoved;

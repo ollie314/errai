@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.common.server;
 
 import java.io.File;
@@ -34,20 +50,20 @@ public class CacheManifestServlet extends HttpServlet {
 
   // Lazily populated cache for user agent names for which a manifest file
   // exists, on a per module basis
-  private Map<String, Set<String>> manifestsPerModule = new ConcurrentHashMap<String, Set<String>>();
+  private final Map<String, Set<String>> manifestsPerModule = new ConcurrentHashMap<String, Set<String>>();
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-    Pattern pattern = Pattern.compile("/([a-zA-Z0-9_]+)/errai.appcache");
-    Matcher matcher = pattern.matcher(req.getServletPath());
+    final Pattern pattern = Pattern.compile("/([a-zA-Z0-9_]+)/errai.appcache");
+    final Matcher matcher = pattern.matcher(req.getServletPath());
     if (!matcher.find()) {
       resp.sendError(HttpServletResponse.SC_NOT_FOUND);
       return;
     }
 
-    String module = matcher.group(1);
+    final String module = matcher.group(1);
     String userAgentManifestPath = null;
-    String referrer = req.getHeader("referer");
+    final String referrer = req.getHeader("referer");
     if (referrer != null && referrer.contains("gwt.codesvr")) {
       // Serve an empty manifest in development mode. This is not reliable as
       // some browser won't send the referer header when requesting the
@@ -66,7 +82,7 @@ public class CacheManifestServlet extends HttpServlet {
   }
 
   private String getUserAgentManifestName(HttpServletRequest req, String module) {
-    String userAgentHeader = req.getHeader("user-agent").toLowerCase();
+    final String userAgentHeader = req.getHeader("user-agent").toLowerCase();
 
     String agentPrefix = "";
     // Do not change the order of these checks. To verify this, compile a
@@ -116,8 +132,8 @@ public class CacheManifestServlet extends HttpServlet {
 
     Set<String> manifests = manifestsPerModule.get(module);
     if (manifests == null) {
-      String path = getServletContext().getRealPath(module);
-      File[] manifestFiles = new File(path).listFiles(new FilenameFilter() {
+      final String path = getServletContext().getRealPath(module);
+      final File[] manifestFiles = new File(path).listFiles(new FilenameFilter() {
         @Override
         public boolean accept(File dir, String name) {
           return name.endsWith(MANIFEST_FILE_EXTENSION);
@@ -125,9 +141,11 @@ public class CacheManifestServlet extends HttpServlet {
       });
 
       manifests = new HashSet<String>();
-      for (File manifestFile : manifestFiles) {
-        String name = manifestFile.getName();
-        manifests.add(name.replace(MANIFEST_FILE_EXTENSION, ""));
+      if (manifestFiles != null) {
+        for (final File manifestFile : manifestFiles) {
+          final String name = manifestFile.getName();
+          manifests.add(name.replace(MANIFEST_FILE_EXTENSION, ""));
+        }
       }
 
       manifestsPerModule.put(module, manifests);

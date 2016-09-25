@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,7 +29,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.enterprise.util.TypeLiteral;
 
@@ -111,9 +113,9 @@ public final class MetaClassFactory {
   }
 
   private static MetaClassCache cache;
-  
+
   public static MetaClassCache getMetaClassCache() {
-    if (cache == null) { 
+    if (cache == null) {
       cache = CacheUtil.getCache(MetaClassCache.class);
     }
     return cache;
@@ -277,14 +279,14 @@ public final class MetaClassFactory {
   private static BuildMetaClass cloneToBuildMetaClass(final MetaClass clazz,
                                                       final MetaParameterizedType parameterizedType,
                                                       final boolean reifyRecursively) {
-    final BuildMetaClass buildMetaClass = new BuildMetaClass(Context.create(), clazz.getFullyQualifiedName());
+    final BuildMetaClass buildMetaClass = new BuildMetaClass(null, clazz.getFullyQualifiedName());
 
     buildMetaClass.setReifiedFormOf(clazz);
     buildMetaClass.setAbstract(clazz.isAbstract());
     buildMetaClass.setFinal(clazz.isFinal());
     buildMetaClass.setStatic(clazz.isStatic());
     buildMetaClass.setInterface(clazz.isInterface());
-    buildMetaClass.setInterfaces(Arrays.asList(clazz.getInterfaces()));
+    addInterfaces(clazz, buildMetaClass, parameterizedType);
     buildMetaClass.setScope(GenUtil.scopeOf(clazz));
     buildMetaClass.setSuperClass(clazz.getSuperClass());
 
@@ -348,6 +350,9 @@ public final class MetaClassFactory {
               typeVarValues.add(MetaClassFactory.get(Object.class));
             }
           }
+          else {
+            typeVarValues.add(metaType);
+          }
         }
 
         if (reifyRecursively && !defaultOnly) {
@@ -388,6 +393,56 @@ public final class MetaClassFactory {
     }
 
     return buildMetaClass;
+  }
+
+  private static void addInterfaces(final MetaClass clazz, final BuildMetaClass buildMetaClass, final MetaParameterizedType parameterizedType) {
+    final MetaType[] typeParams = (clazz.getParameterizedType() != null ? clazz.getParameterizedType().getTypeParameters() : clazz.getTypeParameters());
+    final MetaType[] typeArgs = parameterizedType.getTypeParameters();
+    validateTypeArgumentsAgainstParameters(clazz, typeParams, typeArgs);
+
+    final Map<String, MetaType> typeArgsByTypeParam = mapTypeArgsByTypeParamName(typeParams, typeArgs);
+    final List<MetaClass> ifaces = Arrays
+            .stream(clazz.getInterfaces())
+            .map(iface -> getParameterizedInterface(typeArgsByTypeParam, iface))
+            .collect(Collectors.toList());
+    buildMetaClass.setInterfaces(ifaces);
+  }
+
+  private static BuildMetaClass getParameterizedInterface(final Map<String, MetaType> typeArgsByTypeParam, final MetaClass iface) {
+    final MetaType[] ifaceTypeArgs = getTypeArgumentsForInterface(typeArgsByTypeParam, iface);
+    return cloneToBuildMetaClass(iface, typeParametersOf(ifaceTypeArgs), true);
+  }
+
+  private static MetaType[] getTypeArgumentsForInterface(final Map<String, MetaType> typeArgsByTypeParam, final MetaClass iface) {
+    return Arrays
+      .stream(Optional.ofNullable(iface.getParameterizedType())
+                      .map(i -> i.getTypeParameters())
+                      .orElseGet(() -> iface.getTypeParameters()))
+      .map(mt -> {
+        if (typeArgsByTypeParam.containsKey(mt.getName())) {
+          return typeArgsByTypeParam.get(mt.getName());
+        }
+        else {
+          return mt;
+        }
+    }).toArray(size -> new MetaType[size]);
+  }
+
+  private static Map<String, MetaType> mapTypeArgsByTypeParamName(final MetaType[] typeParams, final MetaType[] typeArgs) {
+    final Map<String, MetaType> typeArgsByTypeParam = new HashMap<>();
+    for (int i = 0; i < typeParams.length; i++) {
+      typeArgsByTypeParam.put(typeParams[i].getName(), typeArgs[i]);
+    }
+    return typeArgsByTypeParam;
+  }
+
+  private static void validateTypeArgumentsAgainstParameters(final MetaClass clazz, final MetaType[] typeParams, final MetaType[] assignedTypes) {
+    if (typeParams.length != assignedTypes.length) {
+      final String message = "Number of provided types does not match the number of type parameters for " + clazz.getFullyQualifiedName()
+      + ".\nType parameters: " + Arrays.toString(typeParams)
+      + "\nProvided types: " + Arrays.toString(assignedTypes);
+      throw new IllegalArgumentException(message);
+    }
   }
 
   private static MetaClass getTypeVariableValue(final MetaTypeVariable typeVariable, final MetaClass clazz) {
@@ -468,7 +523,7 @@ public final class MetaClassFactory {
       }
       return cls;
     }
-    catch (ClassNotFoundException e) {
+    catch (final ClassNotFoundException e) {
       final URL url = MetaClassFactory.class.getClassLoader()
           .getResource(fullyQualifiedName.replace('.', '/') + ".java");
 
@@ -489,7 +544,7 @@ public final class MetaClassFactory {
             return ClassChangeUtil.loadClassDefinition(location,
                 packageName, className);
           }
-          catch (Exception e2) {
+          catch (final Exception e2) {
             throw new RuntimeException("Could not load class: " + fullyQualifiedName, e2);
           }
         }
@@ -504,7 +559,7 @@ public final class MetaClassFactory {
       final Class cls = loadClass(fullyQualifiedName);
       return cls != null;
     }
-    catch (Throwable t) {
+    catch (final Throwable t) {
       return false;
     }
   }
@@ -549,15 +604,15 @@ public final class MetaClassFactory {
   public static Collection<MetaClass> getAllNewOrUpdatedClasses() {
     return getMetaClassCache().getAllNewOrUpdated();
   }
-  
+
   public static Collection<MetaClass> getNewClasses() {
     return getMetaClassCache().getAllNewClasses();
   }
-  
-  public static boolean isChangedOrDeleted(String fqcn) {
+
+  public static boolean isChangedOrDeleted(final String fqcn) {
     return getMetaClassCache().getAllDeletedClasses().contains(fqcn) || getMetaClassCache().isNewOrUpdated(fqcn);
   }
-  
+
   public static Set<String> getAllDeletedClasses() {
     return getMetaClassCache().getAllDeletedClasses();
   }
@@ -566,7 +621,7 @@ public final class MetaClassFactory {
     return getMetaClassCache().getAllCached();
   }
 
-  public static boolean isKnownType(String fqcn) {
+  public static boolean isKnownType(final String fqcn) {
     return getMetaClassCache().isKnownType(fqcn);
   }
 

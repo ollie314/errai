@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,7 +36,7 @@ public class PlainMethodIntegrationTest extends AbstractErraiJaxrsTest {
 
   @Test
   public void testGetWithRemoteCallback() {
-    call(PlainMethodTestService.class, new AssertionCallback<String>("@GET failed", "get")).get();
+    call(PlainMethodTestService.class, new SimpleAssertionCallback<String>("@GET failed", "get")).get();
   }
 
   @Test
@@ -54,25 +54,25 @@ public class PlainMethodIntegrationTest extends AbstractErraiJaxrsTest {
   @Test
   public void testGetReturningVoid() {
     call(PlainMethodTestService.class, "/",
-        new AssertionCallback<Void>("@GET returning void failed", null)).getReturningVoid();
+        new SimpleAssertionCallback<Void>("@GET returning void failed", null)).getReturningVoid();
   }
 
   @Test
   public void testGetWithPathWithoutSlash() {
-    call(PlainMethodTestService.class, "/", new AssertionCallback<String>("@GET with @Path without slash failed",
+    call(PlainMethodTestService.class, "/", new SimpleAssertionCallback<String>("@GET with @Path without slash failed",
             "getWithPathWithoutSlash")).getWithPathWithoutSlash();
   }
 
   @Test
   public void testPostWithRemoteCallback() {
     call(PlainMethodTestService.class,
-        new AssertionCallback<String>("@POST without parameters failed", "post")).post();
+        new SimpleAssertionCallback<String>("@POST without parameters failed", "post")).post();
   }
 
   @Test
   public void testPostReturningNull() {
     call(PlainMethodTestService.class,
-        new AssertionCallback<String>("@POST without parameters failed", null)).postReturningNull();
+        new SimpleAssertionCallback<String>("@POST without parameters failed", null)).postReturningNull();
   }
 
   @Test
@@ -84,7 +84,7 @@ public class PlainMethodIntegrationTest extends AbstractErraiJaxrsTest {
   @Test
   public void testPutWithRemoteCallback() {
     call(PlainMethodTestService.class,
-        new AssertionCallback<String>("@PUT without parameters failed", "put")).put();
+        new SimpleAssertionCallback<String>("@PUT without parameters failed", "put")).put();
   }
 
   @Test
@@ -96,7 +96,7 @@ public class PlainMethodIntegrationTest extends AbstractErraiJaxrsTest {
   @Test
   public void testDeleteWithRemoteCallback() {
     call(PlainMethodTestService.class,
-        new AssertionCallback<String>("@DELETE without parameters failed", "delete")).delete();
+        new SimpleAssertionCallback<String>("@DELETE without parameters failed", "delete")).delete();
   }
 
   @Test

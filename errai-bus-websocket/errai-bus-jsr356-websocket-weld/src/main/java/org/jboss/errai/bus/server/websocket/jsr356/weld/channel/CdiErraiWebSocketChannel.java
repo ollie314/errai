@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.bus.server.websocket.jsr356.weld.channel;
 
 import javax.servlet.http.HttpSession;
@@ -36,32 +52,23 @@ public class CdiErraiWebSocketChannel extends DefaultErraiWebSocketChannel {
   }
 
   public void doErraiMessage(final String message) {
-    activateBuildinScopes();
-    try {
-      super.doErraiMessage(message);
-    } 
-    finally {
-      deactivateBuiltinScopes();
-    }
-  }
-
-  /**
-   * Deactivate builtin CDI scopes. Must be invoked after message processing.
-   */
-  private void deactivateBuiltinScopes() {
-    conversationScopeAdapter.deactivateContext();
-    sessionScopeAdapter.deactivateContext();
-    // bean store should be destroyed after each message
-    requestScopeAdapter.invalidateContext();
-  }
-
-  /**
-   * Activate builtin CDI scopes
-   */
-  private void activateBuildinScopes() {
     requestScopeAdapter.activateContext();
-    sessionScopeAdapter.activateContext(httpSession);
-    conversationScopeAdapter.activateContext(conversationState);
+    try {
+      sessionScopeAdapter.activateContext(httpSession);
+      try {
+        conversationScopeAdapter.activateContext(conversationState);
+        try {
+       	  super.doErraiMessage(message);
+        } finally {
+          conversationScopeAdapter.deactivateContext();
+        }
+      } finally {
+        sessionScopeAdapter.deactivateContext();
+      }
+    } finally {
+      // bean store should be destroyed after each message
+      requestScopeAdapter.invalidateContext();
+    }
   }
 
   /**

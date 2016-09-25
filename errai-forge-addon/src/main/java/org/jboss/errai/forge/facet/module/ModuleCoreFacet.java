@@ -1,19 +1,19 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2014, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2014 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.forge.facet.module;
 
 import org.jboss.errai.forge.config.ProjectConfig;
@@ -39,7 +39,7 @@ import java.util.Properties;
 /**
  * This facet creates a GWT module file if necessary and inherits the
  * {@literal com.google.gwt.user.User} module.
- * 
+ *
  * @author Max Barkley <mbarkley@redhat.com>
  */
 @FacetConstraint({ ProjectConfig.class })
@@ -49,17 +49,17 @@ public class ModuleCoreFacet extends AbstractModuleFacet {
 
   final static String emptyModuleContents =
           "<?xml version='1.0' encoding='UTF-8'?>\n"
-                  + "<!DOCTYPE module PUBLIC '-//Google Inc.//DTD Google Web Toolkit 1.6//EN'\n\t"
-                  + "'http://google-web-toolkit.googlecode.com/svn/releases/1.6/distro-source/core/src/gwt-module.dtd'>\n"
+                  + "<!DOCTYPE module PUBLIC '-//Google Inc.//DTD Google Web Toolkit 2.8//EN'\n\t"
+                  + "'http://www.gwtproject.org/doctype/2.8.0/gwt-module.dtd'>\n"
                   + "<module></module>\n";
 
   public ModuleCoreFacet() {
     modules = Arrays.asList(new Module[] {
         Module.GwtUser
     });
-    xmlProperties.setProperty(OutputKeys.DOCTYPE_PUBLIC, "-//Google Inc.//DTD Google Web Toolkit 1.6//EN");
+    xmlProperties.setProperty(OutputKeys.DOCTYPE_PUBLIC, "-//Google Inc.//DTD Google Web Toolkit 2.8//EN");
     xmlProperties.setProperty(OutputKeys.DOCTYPE_SYSTEM,
-            "http://google-web-toolkit.googlecode.com/svn/releases/1.6/distro-source/core/src/gwt-module.dtd");
+            "http://www.gwtproject.org/doctype/2.8.0/gwt-module.dtd");
   }
 
   @Override

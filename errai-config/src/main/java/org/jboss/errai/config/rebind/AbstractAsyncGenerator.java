@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 JBoss, by Red Hat, Inc
+ * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,6 @@
 
 package org.jboss.errai.config.rebind;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.HashSet;
@@ -39,15 +38,15 @@ import com.google.gwt.core.ext.TreeLogger;
 
 /**
  * Base class of all asynchronous code generators.
- * 
+ *
  * @author Christian Sadilek <csadilek@redhat.com>
  */
 public abstract class AbstractAsyncGenerator extends Generator implements AsyncCodeGenerator {
 
   private static final Map<Class<? extends AbstractAsyncGenerator>, String> cacheMap = new ConcurrentHashMap<Class<? extends AbstractAsyncGenerator>, String>();
-  private static final Map<Class<? extends AbstractAsyncGenerator>, Set<String>> cacheRelevantClasses = 
+  private static final Map<Class<? extends AbstractAsyncGenerator>, Set<String>> cacheRelevantClasses =
           new ConcurrentHashMap<Class<? extends AbstractAsyncGenerator>, Set<String>>();
-  
+
   private static Logger log = LoggerFactory.getLogger(AbstractAsyncGenerator.class);
 
   @Override
@@ -57,7 +56,7 @@ public abstract class AbstractAsyncGenerator extends Generator implements AsyncC
       public String call() throws Exception {
         final String generatedCode;
 
-        if (isCacheValid()) {
+        if (isCacheEnabled() && isCacheValid()) {
           log.info("Using cached output from " + AbstractAsyncGenerator.this.getClass().getName());
           generatedCode = getGeneratedCache();
         }
@@ -73,11 +72,19 @@ public abstract class AbstractAsyncGenerator extends Generator implements AsyncC
     });
   }
 
+  private boolean isCacheEnabled() {
+    return !RebindUtils.NO_CACHE;
+  }
+
   /**
    * @return True iff there is a cached output for this generator. Useful for subclasses that must override {@link #isCacheValid()}.
    */
   protected final boolean hasGenerationCache() {
-    return cacheMap.containsKey(getClass());
+    final boolean hasCache = cacheMap.containsKey(getClass());
+    if (log.isDebugEnabled()) {
+      log.debug("{} {} a generated cache.", getClass().getSimpleName(), (hasCache ? "has" : "does not have"));
+    }
+    return hasCache;
   }
 
   protected final String getGeneratedCache() {
@@ -92,54 +99,62 @@ public abstract class AbstractAsyncGenerator extends Generator implements AsyncC
    * @return True iff this generator does not need to be run again this refresh.
    */
   protected boolean isCacheValid() {
-    boolean hasChanges = MetaClassFactory.hasAnyChanges() && hasRelevantChanges();
-    return hasGenerationCache() && !hasChanges;
+    return hasGenerationCache() && !(MetaClassFactory.hasAnyChanges() && hasRelevantChanges());
   }
-  
+
   private boolean hasRelevantChanges() {
-    Set<String> relevantClasses = cacheRelevantClasses.get(this.getClass());
+    final String generatorName = this.getClass().getSimpleName();
+    final Set<String> relevantClasses = cacheRelevantClasses.get(this.getClass());
     if (relevantClasses == null) {
-      // generator did not mark any classes. we have to assume that a rerun is required.
+      log.debug("No classes marked as relevant for {}. Assuming there are relevant changes.", generatorName);
       return true;
     }
-    
-    for (MetaClass newClazz : MetaClassFactory.getNewClasses()) {
-      if (isRelevantNewClass(newClazz)) {
+
+    for (final MetaClass clazz : MetaClassFactory.getAllNewOrUpdatedClasses()) {
+      final boolean previouslyMarkedRelevant = relevantClasses.contains(clazz.getFullyQualifiedName());
+      if (previouslyMarkedRelevant || isRelevantClass(clazz)) {
+        log.debug("New or updated class {} is {} cache relevant for {}.", clazz.getFullyQualifiedName(),
+                (previouslyMarkedRelevant ? "previously marked as" : "now marked as"), generatorName);
         return true;
+      } else {
+        log.trace("New or updated class {} is not cache relevant for {}.", clazz.getFullyQualifiedName(), generatorName);
       }
     }
-    
-    for (String relevantClass : relevantClasses) {
-      if (MetaClassFactory.isChangedOrDeleted(relevantClass)) {
+
+    for (final String deleted : MetaClassFactory.getAllDeletedClasses()) {
+      if (relevantClasses.contains(deleted)) {
+        log.debug("Deleted class {} was cache relevant for {}.", deleted, generatorName);
         return true;
+      } else {
+        log.trace("Deleted class {} is not cache relevant for {}.", deleted, generatorName);
       }
     }
-    
+
     return false;
   }
-  
+
   /**
    * Checks if the provided class is relevant to this generator. This method is
    * invoked to determine whether or not the introduction of the provided class
    * should trigger a rerun of this generator.
-   * 
+   *
    * @param clazz
    *          a newly introduced clazz since the last refresh.
-   * 
+   *
    * @return true if newly introduced class is relevant to this generator,
    *         otherwise false.
    */
-  protected boolean isRelevantNewClass(MetaClass clazz) {
+  protected boolean isRelevantClass(final MetaClass clazz) {
     return true;
   }
 
   /**
    * Called by {@link #generateAsync(TreeLogger, GeneratorContext)} to carry out the actual code
    * generation.
-   * 
+   *
    * @param context
    *          the generator context to use.
-   * 
+   *
    * @return the generated code.
    */
   protected abstract String generate(final TreeLogger logger, final GeneratorContext context);
@@ -147,7 +162,7 @@ public abstract class AbstractAsyncGenerator extends Generator implements AsyncC
   /**
    * Starts all asynchronous generators if they haven't been started yet and waits for the
    * completion of the generator responsible for the provided interface type.
-   * 
+   *
    * @param interfaceType
    *          the interface for which an implementation should be generated.
    * @param context
@@ -158,7 +173,7 @@ public abstract class AbstractAsyncGenerator extends Generator implements AsyncC
    *          the package name of the generated class.
    * @param className
    *          the name of the generated class.
-   * 
+   *
    * @return the fully qualified name of the generated class.
    */
   protected String startAsyncGeneratorsAndWaitFor(
@@ -178,7 +193,9 @@ public abstract class AbstractAsyncGenerator extends Generator implements AsyncC
             .runIfStarting(new Runnable() {
               @Override
               public void run() {
+                final long start = System.currentTimeMillis();
                 MetaClassBridgeUtil.populateMetaClassFactoryFromTypeOracle(context, logger);
+                log.debug("MetaClassFactory populated in {}ms", System.currentTimeMillis() - start);
               }
             })
             .build()
@@ -188,31 +205,30 @@ public abstract class AbstractAsyncGenerator extends Generator implements AsyncC
         final String gen = future.get();
         printWriter.append(gen);
 
-        final File tmpFile = new File(RebindUtils.getErraiCacheDir().getAbsolutePath() + "/" + className + ".java");
-        RebindUtils.writeStringToFile(tmpFile, gen);
+        RebindUtils.writeStringToJavaSourceFileInErraiCacheDir(packageName, className, gen);
 
         context.commit(logger, printWriter);
       }
     }
-    catch (Throwable e) {
+    catch (final Throwable e) {
       e.printStackTrace();
       logger.log(TreeLogger.ERROR, "Error generating " + className, e);
     }
 
     return packageName + "." + className;
   }
-  
+
   /**
    * Marks the provided class as cache relevant. This means that the provided
    * class will be considered when checking for changes to determine whether or
    * not the generator needs to rerun after a refresh. If no cache relevant
    * classes are added any change to reloadable classes will cause the generator
    * to rerun.
-   * 
+   *
    * @param clazz
    *          the class to consider when checking for changes.
    */
-  protected void addCacheRelevantClass(MetaClass clazz) {
+  protected void addCacheRelevantClass(final MetaClass clazz) {
     Set<String> classes = cacheRelevantClasses.get(this.getClass());
     if (classes == null) {
       classes = new HashSet<String>();
@@ -227,16 +243,16 @@ public abstract class AbstractAsyncGenerator extends Generator implements AsyncC
    * or not the generator needs to rerun after a refresh. If no cache relevant
    * classes are added any change to reloadable classes will cause the generator
    * to rerun.
-   * 
+   *
    * @param classes
    *          the classes to consider when checking for changes.
    */
-  protected void addCacheRelevantClasses(Collection<MetaClass> classes) {
-    for (MetaClass clazz : classes) {
+  protected void addCacheRelevantClasses(final Collection<MetaClass> classes) {
+    for (final MetaClass clazz : classes) {
       addCacheRelevantClass(clazz);
     }
   }
-  
+
   private void clearCacheRelevantClasses() {
     cacheRelevantClasses.remove(this.getClass());
   }

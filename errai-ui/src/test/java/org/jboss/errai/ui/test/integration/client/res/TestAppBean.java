@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 JBoss, by Red Hat, Inc
+ * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,26 +16,27 @@
 
 package org.jboss.errai.ui.test.integration.client.res;
 
-import com.google.gwt.user.client.ui.Composite;
-import com.google.gwt.user.client.ui.Widget;
-import org.jboss.errai.ioc.client.api.EntryPoint;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Produces;
+import javax.inject.Inject;
+
 import org.jboss.errai.ui.shared.api.annotations.DataField;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
 
-import javax.enterprise.inject.Produces;
-import javax.inject.Inject;
+import com.google.gwt.user.client.ui.Composite;
+import com.google.gwt.user.client.ui.Widget;
 
 /**
  * @author Mike Brock
  */
-@EntryPoint
+@ApplicationScoped
 @Templated("TestTemplate.html")
 public class TestAppBean extends Composite {
   @Inject @ContentPanel @DataField("content") private Widget w;
 
   @Produces
   @ContentPanel
-  public Widget produceContentPanel(final SomeDependency someDependency) {
+  public static Widget produceContentPanel(final SomeDependency someDependency) {
     return someDependency.makeWidget();
   }
 

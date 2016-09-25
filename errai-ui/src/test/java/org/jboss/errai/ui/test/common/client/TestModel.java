@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@ import org.jboss.errai.databinding.client.api.Bindable;
 
 /**
  * Simple bindable model for testing purposes.
- * 
+ *
  * @author Christian Sadilek <csadilek@redhat.com>
  */
 @Bindable
@@ -34,10 +34,12 @@ public class TestModel {
 
   private Integer id;
   private String name;
+  private String title;
+  private Integer age;
   private Date lastChanged;
   private String phoneNumber;
   private List<TestModel> children = new ArrayList<TestModel>();
-  
+
   private TestModel child;
 
   public TestModel() {}
@@ -79,7 +81,7 @@ public class TestModel {
   public TestModel getChild() {
     return child;
   }
-  
+
   public void setPhoneNumber(String phoneNumber) {
     this.phoneNumber = phoneNumber;
   }
@@ -87,19 +89,35 @@ public class TestModel {
   public String getPhoneNumber() {
     return phoneNumber;
   }
-  
+
   public List<TestModel> getChildren() {
     return children;
   }
 
   public void setChildren(List<TestModel> children) {
     this.children = children;
-  }  
+  }
+
+  public String getTitle() {
+    return title;
+  }
+
+  public void setTitle(String title) {
+    this.title = title;
+  }
+
+  public Integer getAge() {
+    return age;
+  }
+
+  public void setAge(Integer age) {
+    this.age = age;
+  }
 
   @Override
   public String toString() {
     return "TestModel [id=" + id + ", name=" + name + ", lastChanged=" + lastChanged + ", phoneNumber=" + phoneNumber
         + ", child=" + child + "]";
   }
-  
+
 }

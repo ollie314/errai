@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -67,7 +67,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gwt.core.client.GWT;
-import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
 import com.google.gwt.event.logical.shared.CloseEvent;
 import com.google.gwt.event.logical.shared.CloseHandler;
 import com.google.gwt.user.client.Timer;
@@ -91,9 +90,8 @@ public class ClientMessageBusImpl implements ClientMessageBus {
   private final String clientId;
   private String sessionId;
 
-  private final List<SubscribeListener> onSubscribeHooks = new ArrayList<SubscribeListener>();
-  private final List<UnsubscribeListener> onUnsubscribeHooks = new ArrayList<UnsubscribeListener>();
-  private final List<UncaughtExceptionHandler> uncaughtExceptionHandlers = new ArrayList<UncaughtExceptionHandler>();
+  private final List<SubscribeListener> onSubscribeHooks = new ArrayList<>();
+  private final List<UnsubscribeListener> onUnsubscribeHooks = new ArrayList<>();
 
   /**
    * Forwards every message received across the communication link to the remote
@@ -118,15 +116,11 @@ public class ClientMessageBusImpl implements ClientMessageBus {
     @Override
     public void callback(final Message message) {
       final String errorTo = message.get(String.class, MessageParts.ErrorTo);
-      
-      if (errorTo == null) {
-        Throwable t = message.get(Throwable.class, MessageParts.Throwable);
-        GWT.getUncaughtExceptionHandler().onUncaughtException(t);
 
-        if (!uncaughtExceptionHandlers.isEmpty()) {
-          for (UncaughtExceptionHandler handler : uncaughtExceptionHandlers) {
-            handler.onUncaughtException(t);
-          }
+      if (errorTo == null || DefaultErrorCallback.CLIENT_ERROR_SUBJECT.equals(errorTo)) {
+        final Throwable t = message.get(Throwable.class, MessageParts.Throwable);
+        if (GWT.getUncaughtExceptionHandler() != null) {
+          GWT.getUncaughtExceptionHandler().onUncaughtException(t);
         }
         else {
           managementConsole.displayError(message.get(String.class, MessageParts.ErrorMessage),
@@ -139,7 +133,7 @@ public class ClientMessageBusImpl implements ClientMessageBus {
         message.sendNowWith(ClientMessageBusImpl.this);
       }
     }
-    
+
   }
   private final ErrorProcessor clientBusErrorsCallback = new ErrorProcessor();
 
@@ -260,28 +254,28 @@ public class ClientMessageBusImpl implements ClientMessageBus {
    */
   private TransportHandler transportHandler = BOOTSTRAP_HANDLER;
 
-  private final Map<String, List<MessageCallback>> subscriptions = new HashMap<String, List<MessageCallback>>();
-  private final Map<String, List<MessageCallback>> localSubscriptions = new HashMap<String, List<MessageCallback>>();
-  private final Map<String, List<MessageCallback>> shadowSubscriptions = new HashMap<String, List<MessageCallback>>();
+  private final Map<String, List<MessageCallback>> subscriptions = new HashMap<>();
+  private final Map<String, List<MessageCallback>> localSubscriptions = new HashMap<>();
+  private final Map<String, List<MessageCallback>> shadowSubscriptions = new HashMap<>();
 
-  private final Map<String, MessageCallback> remotes = new HashMap<String, MessageCallback>();
+  private final Map<String, MessageCallback> remotes = new HashMap<>();
 
-  private final List<TransportErrorHandler> transportErrorHandlers = new ArrayList<TransportErrorHandler>();
+  private final List<TransportErrorHandler> transportErrorHandlers = new ArrayList<>();
 
-  private final List<Runnable> deferredSubscriptions = new ArrayList<Runnable>();
-  private final List<Message> deferredMessages = new ArrayList<Message>();
+  private final List<Runnable> deferredSubscriptions = new ArrayList<>();
+  private final List<Message> deferredMessages = new ArrayList<>();
 
-  private final List<BusLifecycleListener> lifecycleListeners = new ArrayList<BusLifecycleListener>();
+  private final List<BusLifecycleListener> lifecycleListeners = new ArrayList<>();
 
   private BusState state = BusState.UNINITIALIZED;
 
   private final ManagementConsole managementConsole;
 
-  private final Map<String, String> properties = new HashMap<String, String>();
+  private final Map<String, String> properties = new HashMap<>();
 
   private Timer initialConnectTimer;
-  
-  private static final Logger logger = LoggerFactory.getLogger(ClientMessageBusImpl.class);
+
+  private static final Logger logger = LoggerFactory.getLogger(ClientMessageBus.class);
 
   public ClientMessageBusImpl() {
     setBusToInitializableState();
@@ -317,12 +311,12 @@ public class ClientMessageBusImpl implements ClientMessageBus {
 
   private void setupDefaultHandlers() {
     if (availableHandlers != null) {
-      for (TransportHandler handler : availableHandlers.values()) {
+      for (final TransportHandler handler : availableHandlers.values()) {
         handler.close();
       }
     }
 
-    Map<String, TransportHandler> m = new LinkedHashMap<String, TransportHandler>();
+    final Map<String, TransportHandler> m = new LinkedHashMap<>();
     m.put(Capabilities.WebSockets.name(), new WebsocketHandler(ClientMessageBusImpl.this));
     m.put(Capabilities.SSE.name(), new SSEHandler(ClientMessageBusImpl.this));
     m.put(Capabilities.LongPolling.name(),
@@ -350,7 +344,7 @@ public class ClientMessageBusImpl implements ClientMessageBus {
        * This is an optimization to improve unit testing speed. If a test case
        * does not tear down the bus after each test, calling this will ensure
        * that any services dependent on the bus will still be loaded.
-       * 
+       *
        * It's very important that we call waitFor first because InitVotes is
        * reset between most tests. Calling voteFor has not effect without a
        * prior waitFor.
@@ -419,7 +413,7 @@ public class ClientMessageBusImpl implements ClientMessageBus {
     deferredSubscriptions.clear();
 
     if (!isProperty(ChaosMonkey.DONT_REALLY_CONNECT, "true")) {
-      final Map<String, String> properties = new HashMap<String, String>();
+      final Map<String, String> properties = new HashMap<>();
       properties.put("phase", "connection");
       properties.put("wait", "1");
 
@@ -547,10 +541,12 @@ public class ClientMessageBusImpl implements ClientMessageBus {
     return subjects;
   }
 
+  @Override
   public String getClientId() {
     return clientId;
   }
 
+  @Override
   public String getSessionId() {
     return sessionId;
   }
@@ -589,7 +585,7 @@ public class ClientMessageBusImpl implements ClientMessageBus {
   public Subscription subscribeShadow(final String subject, final MessageCallback callback) {
     List<MessageCallback> messageCallbacks = shadowSubscriptions.get(subject);
     if (messageCallbacks == null) {
-      shadowSubscriptions.put(subject, messageCallbacks = new ArrayList<MessageCallback>());
+      shadowSubscriptions.put(subject, messageCallbacks = new ArrayList<>());
     }
     messageCallbacks.add(callback);
 
@@ -669,9 +665,8 @@ public class ClientMessageBusImpl implements ClientMessageBus {
         try {
           callback.callback(message);
         }
-        catch (Exception e) {
-          managementConsole
-              .displayError("receiver '" + subject + "' threw an exception", decodeCommandMessage(message), e);
+        catch (final Exception e) {
+          handleCallbackError(message, e);
         }
       }
     };
@@ -773,11 +768,10 @@ public class ClientMessageBusImpl implements ClientMessageBus {
   public void send(final Message message) {
     message.setResource(RequestDispatcher.class.getName(), BusToolsCli.getRequestDispatcherProvider())
         .setResource("Session", BusToolsCli.getClientSession()).commit();
-
-  //  LogUtil.log("[bus] send(" + message.getParts() + ")");
+    logger.debug("send({})", message.getParts());
 
     try {
-      boolean deferred = false;
+      boolean delivered = false;
       final boolean localOnly = message.isFlagSet(RoutingFlag.DeliverLocalOnly);
       final String subject = message.getSubject();
 
@@ -785,21 +779,18 @@ public class ClientMessageBusImpl implements ClientMessageBus {
         if (isRemoteCommunicationEnabled() && !localOnly) {
           if (getState().isShadowDeliverable() && shadowSubscriptions.containsKey(subject)) {
             deliverToSubscriptions(shadowSubscriptions, subject, message);
-            deferred = true;
+            delivered = true;
           }
           else if (getState() != BusState.CONNECTED) {
-          //  LogUtil.log("[bus] deferred: " + message);
+            logger.debug("deferred: {}", message);
             deferredMessages.add(message);
-            deferred = true;
+            delivered = true;
           }
-        }
-
-        boolean routedToRemote = false;
-
-        if (!localOnly && remotes.containsKey(subject)) {
-        //  LogUtil.log("[bus] sent to remote: " + message);
-          remotes.get(subject).callback(message);
-          routedToRemote = true;
+          else if (remotes.containsKey(subject)) {
+            logger.debug("sent to remote: {}", message);
+            remotes.get(subject).callback(message);
+            delivered = true;
+          }
         }
 
         if (subscriptions.containsKey(subject)) {
@@ -808,8 +799,13 @@ public class ClientMessageBusImpl implements ClientMessageBus {
         else if (localSubscriptions.containsKey(subject)) {
           deliverToSubscriptions(localSubscriptions, subject, message);
         }
-        else if (!deferred && !routedToRemote) {
-          throw new NoSubscribersToDeliverTo(subject);
+        else if (!delivered) {
+          if (shadowSubscriptions.containsKey(subject)) {
+            deliverToSubscriptions(shadowSubscriptions, subject, message);
+          }
+          else {
+            throw new NoSubscribersToDeliverTo(subject);
+          }
         }
       }
       else {
@@ -817,11 +813,8 @@ public class ClientMessageBusImpl implements ClientMessageBus {
             + " if the message does not contain a ToSubject field.");
       }
     }
-    catch (RuntimeException e) {
-      boolean defaultErrorHandling = callErrorHandler(message, e);
-
-      if (defaultErrorHandling)
-        throw e;
+    catch (final RuntimeException e) {
+      callErrorHandler(message, e);
     }
   }
 
@@ -831,7 +824,7 @@ public class ClientMessageBusImpl implements ClientMessageBus {
     final List<MessageCallback> messageCallbacks = subscriptions.get(subject);
     if (messageCallbacks != null) {
       // iterating over a copy of the list in case a subscriber unsubscribes during callback
-      for (final MessageCallback cb : new ArrayList<MessageCallback>(messageCallbacks)) {
+      for (final MessageCallback cb : new ArrayList<>(messageCallbacks)) {
         cb.callback(msg);
       }
     }
@@ -845,16 +838,16 @@ public class ClientMessageBusImpl implements ClientMessageBus {
     }
 
     if (defaultErrorHandling) {
-      managementConsole.displayError(t.getMessage(), "none", t);
+      DefaultErrorCallback.INSTANCE.error(message, t);
     }
 
     return defaultErrorHandling;
   }
 
   public void encodeAndTransmit(final Message message) {
-  //  LogUtil.log("[bus] encodeAndTransmit(" + message.getParts() + ")");
+    logger.debug("encodeAndTransmit({})", message.getParts());
     if (getState() == BusState.LOCAL_ONLY) {
-    //  LogUtil.log("[bus] encodeAndTransmit(" + message.getParts() + ") NOT ROUTED - LOCAL ONLY");
+      logger.debug("encodeAndTransmit({}) NOT ROUTED - LOCAL ONLY", message.getParts());
       return;
     }
 
@@ -895,10 +888,10 @@ public class ClientMessageBusImpl implements ClientMessageBus {
 
   /**
    * Checks if subject is already listed in the subscriptions map
-   * 
+   *
    * @param subject
    *          subject to look for
-   * 
+   *
    * @return true if the subject is already subscribed
    */
   @Override
@@ -924,7 +917,7 @@ public class ClientMessageBusImpl implements ClientMessageBus {
       boolean deliveredMessages;
       do {
         deliveredMessages = false;
-        for (final Message message : new ArrayList<Message>(deferredMessages)) {
+        for (final Message message : new ArrayList<>(deferredMessages)) {
           if (shadowSubscriptions.containsKey(message.getSubject())) {
             deferredMessages.remove(message);
             deliveredMessages = true;
@@ -940,8 +933,8 @@ public class ClientMessageBusImpl implements ClientMessageBus {
     if (!deferredMessages.isEmpty())
       logger.info("transmitting deferred messages now ...");
 
-    final List<Message> highPriority = new ArrayList<Message>();
-    for (final Message message : new ArrayList<Message>(deferredMessages)) {
+    final List<Message> highPriority = new ArrayList<>();
+    for (final Message message : new ArrayList<>(deferredMessages)) {
       if (message.hasPart(MessageParts.PriorityProcessing)) {
         if (remotes.containsKey(message.getSubject()))
           highPriority.add(message);
@@ -949,9 +942,9 @@ public class ClientMessageBusImpl implements ClientMessageBus {
       }
     }
 
-    final List<Message> lowPriority = new ArrayList<Message>();
+    final List<Message> lowPriority = new ArrayList<>();
     do {
-      for (final Message message : new ArrayList<Message>(deferredMessages)) {
+      for (final Message message : new ArrayList<>(deferredMessages)) {
         if (remotes.containsKey(message.getSubject()))
           lowPriority.add(message);
         deferredMessages.remove(message);
@@ -981,15 +974,31 @@ public class ClientMessageBusImpl implements ClientMessageBus {
     return transportError.isStopDefaultErrorHandler();
   }
 
+  private void handleCallbackError(final Message message, final Throwable t) {
+    boolean defaultErrorHandling = true;
+    if (message.getErrorCallback() != null) {
+      try {
+        defaultErrorHandling = message.getErrorCallback().error(message, t);
+      }
+      catch (final Throwable secondaryError) {
+        logger.error("Encountered an error while calling error callback for message to " + message.getSubject(), secondaryError);
+      }
+    }
+
+    if (defaultErrorHandling) {
+      DefaultErrorCallback.INSTANCE.error(message, t);
+    }
+  }
+
   private void loadRpcProxies() {
-    RpcProxyLoader proxyLoader = ((RpcProxyLoader) GWT.create(RpcProxyLoader.class));
+    final RpcProxyLoader proxyLoader = ((RpcProxyLoader) GWT.create(RpcProxyLoader.class));
     proxyLoader.loadProxies(ClientMessageBusImpl.this);
   }
 
   /**
    * Adds a subscription listener, so it is possible to add subscriptions to the
    * client.
-   * 
+   *
    * @param listener
    *          subscription listener
    */
@@ -1008,18 +1017,6 @@ public class ClientMessageBusImpl implements ClientMessageBus {
   @Override
   public void addUnsubscribeListener(final UnsubscribeListener listener) {
     this.onUnsubscribeHooks.add(listener);
-  }
-
-  private static String decodeCommandMessage(final Message msg) {
-    final StringBuilder decode = new StringBuilder(
-        "<table><thead style='font-weight:bold;'><tr><td>Field</td><td>Value</td></tr></thead><tbody>");
-
-    for (final Map.Entry<String, Object> entry : msg.getParts().entrySet()) {
-      decode.append("<tr><td>").append(entry.getKey()).append("</td><td>").append(entry.getValue())
-          .append("</td></tr>");
-    }
-
-    return decode.append("</tbody></table>").toString();
   }
 
   /**
@@ -1074,11 +1071,11 @@ public class ClientMessageBusImpl implements ClientMessageBus {
   }
 
   public Set<String> getRemoteServices() {
-    return new HashSet<String>(remotes.keySet());
+    return new HashSet<>(remotes.keySet());
   }
 
   public Set<String> getLocalServices() {
-    return new HashSet<String>(subscriptions.keySet());
+    return new HashSet<>(subscriptions.keySet());
   }
 
   public String getApplicationLocation(final String serviceEntryPoint) {
@@ -1153,7 +1150,7 @@ public class ClientMessageBusImpl implements ClientMessageBus {
       return;
     }
 
-    final List<BusEventType> events = new ArrayList<BusEventType>();
+    final List<BusEventType> events = new ArrayList<>();
 
     switch (state) {
       case UNINITIALIZED:
@@ -1215,25 +1212,11 @@ public class ClientMessageBusImpl implements ClientMessageBus {
         try {
           et.deliverTo(lifecycleListeners.get(i), e);
         }
-        catch (Throwable t) {
+        catch (final Throwable t) {
           logger.error("listener threw exception: " + t);
           t.printStackTrace();
         }
       }
     }
-  }
-
-  public void addUncaughtExceptionHandler(UncaughtExceptionHandler handler) {
-    Assert.notNull(handler);
-    uncaughtExceptionHandlers.add(handler);
-  }
-  
-  public void removeUncaughtExceptionHandler(UncaughtExceptionHandler handler) {
-    Assert.notNull(handler);
-    uncaughtExceptionHandlers.remove(handler);
-  }
-  
-  public void removeAllUncaughtExceptionHandlers() {
-    uncaughtExceptionHandlers.clear();
   }
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,24 +16,21 @@
 
 package org.jboss.errai.ioc.client.api.builtin;
 
+import javax.inject.Singleton;
+
+import org.jboss.errai.common.client.api.annotations.IOCProducer;
 import org.jboss.errai.ioc.client.api.EnabledByProperty;
-import org.jboss.errai.ioc.client.api.IOCProvider;
-import org.jboss.errai.ioc.client.container.ClientBeanManager;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.SyncBeanManager;
-import org.jboss.errai.ioc.client.container.SyncBeanManagerImpl;
-
-import javax.inject.Provider;
-import javax.inject.Singleton;
 
 /**
  * @author Mike Brock
  */
-@IOCProvider
 @Singleton
 @EnabledByProperty(value = "errai.ioc.async_bean_manager", negated = true)
-public class IOCBeanManagerProvider implements Provider<SyncBeanManager> {
-  @Override
+public class IOCBeanManagerProvider {
+
+  @IOCProducer
   public SyncBeanManager get() {
     return IOC.getBeanManager();
   }

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.cdi.server.gwt.util;
 
 import java.io.BufferedInputStream;
@@ -34,19 +50,22 @@ public class CopyUtil {
    */
   public static void recursiveCopy(final File to, final File from, final Filter filter) throws IOException {
     if (from.isDirectory()) {
-      for (File orig : from.listFiles()) {
-        if (filter == null || filter.include(orig)) {
-          if (orig.isDirectory()) {
-            // Make new directory
-            final File newDir = new File(to, orig.getName());
-            if (!newDir.exists() && !newDir.mkdir()) {
-              throw new IOException(String.format("Unable to create directory %s", newDir.getAbsolutePath()));
+      final File[] files = from.listFiles();
+      if (files != null) {
+        for (final File orig : files) {
+          if (filter == null || filter.include(orig)) {
+            if (orig.isDirectory()) {
+              // Make new directory
+              final File newDir = new File(to, orig.getName());
+              if (!newDir.exists() && !newDir.mkdir()) {
+                throw new IOException(String.format("Unable to create directory %s", newDir.getAbsolutePath()));
+              }
+              recursiveCopy(newDir, orig, filter);
             }
-            recursiveCopy(newDir, orig, filter);
-          }
-          else {
-            final File newFile = new File(to, orig.getName());
-            copyFile(newFile, orig);
+            else {
+              final File newFile = new File(to, orig.getName());
+              copyFile(newFile, orig);
+            }
           }
         }
       }
@@ -62,8 +81,8 @@ public class CopyUtil {
    *          The file to be copied from.
    */
   public static void copyFile(final File to, final File from) throws IOException {
-    BufferedInputStream reader = new BufferedInputStream(new FileInputStream(from));
-    BufferedOutputStream writer = new BufferedOutputStream(new FileOutputStream(to));
+    final BufferedInputStream reader = new BufferedInputStream(new FileInputStream(from));
+    final BufferedOutputStream writer = new BufferedOutputStream(new FileOutputStream(to));
 
     copyStream(writer, reader);
 
@@ -83,7 +102,7 @@ public class CopyUtil {
     if (!to.exists()) {
       to.createNewFile();
     }
-    BufferedOutputStream writer = new BufferedOutputStream(new FileOutputStream(to));
+    final BufferedOutputStream writer = new BufferedOutputStream(new FileOutputStream(to));
 
     copyStream(writer, from);
 
@@ -145,8 +164,11 @@ public class CopyUtil {
   private static void recursiveDeleteOnExitHelper(File fileOrDir) {
     fileOrDir.deleteOnExit();
     if (fileOrDir.isDirectory()) {
-      for (File file : fileOrDir.listFiles()) {
-        recursiveDeleteOnExitHelper(file);
+      final File[] files = fileOrDir.listFiles();
+      if (files != null) {
+        for (final File file : files) {
+          recursiveDeleteOnExitHelper(file);
+        }
       }
     }
   }

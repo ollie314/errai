@@ -1,11 +1,11 @@
 /*
- * Copyright 2014 JBoss, by Red Hat, Inc
+ * Copyright (C) 2014 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,10 @@ import org.jboss.errai.ioc.client.api.IOCProvider;
 
 /**
  * {@link IOCProvider} to make the default navigation panel injectable.
- * 
+ *
+ * This is a contextual type provider so that it only matches NavigationPanel
+ * exactly, and no supertypes.
+ *
  * @author Christian Sadilek <csadilek@redhat.com>
  */
 @IOCProvider

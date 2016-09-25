@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,8 +30,9 @@ public abstract class AbstractCallElement implements CallElement {
   protected CallElement next;
   protected MetaClass resultType = null;
 
-  protected final RuntimeException blame = new RuntimeException("Problem was caused by this call");
-
+  private final static boolean blameDetailsEnabled = Boolean.getBoolean("errai.codegen.details");
+  private final RuntimeException blame = (blameDetailsEnabled) ? new RuntimeException("Problem was caused by this call") : null;
+  
   public void nextOrReturn(CallWriter writer, Context ctx, Statement statement) {
     try {
       if (statement != null) {
@@ -46,7 +47,7 @@ public abstract class AbstractCallElement implements CallElement {
         getNext().handleCall(writer, ctx, statement);
       }
     }
-    catch (GenerationException e) {
+    catch (final GenerationException e) {
       blameAndRethrow(e);
     }
   }
@@ -80,10 +81,16 @@ public abstract class AbstractCallElement implements CallElement {
   }
 
   protected void blameAndRethrow(GenerationException e) {
-    if (e.getCause() == null) {
-      GenUtil.rewriteBlameStackTrace(blame);
+    if (!blameDetailsEnabled) {
+      final RuntimeException blamePlaceHolder = new RuntimeException(
+              "Problem during Errai code generation. Please set system property -Derrai.codegen.details=true for more details.");
+      blamePlaceHolder.initCause(e);
+      throw blamePlaceHolder;
+    }
 
-      e.initCause(blame);
+    if (e.getCause() == null) {
+        GenUtil.rewriteBlameStackTrace(blame);
+        e.initCause(blame);
     }
     throw e;
   }

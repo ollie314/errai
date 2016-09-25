@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,7 @@ package org.jboss.errai.ioc.client.api.builtin;
 import org.jboss.errai.common.client.api.Caller;
 import org.jboss.errai.common.client.api.ErrorCallback;
 import org.jboss.errai.common.client.api.RemoteCallback;
-import org.jboss.errai.common.client.api.VoidCallback;
+import org.jboss.errai.common.client.api.NoOpCallback;
 import org.jboss.errai.common.client.framework.RemoteServiceProxyFactory;
 import org.jboss.errai.common.client.framework.RpcStub;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
@@ -43,7 +43,7 @@ public class CallerProvider implements ContextualTypeProvider<Caller> {
       @Override
       public Object call() {
         final Object proxy = factory.getRemoteProxy(typeargs[0]);
-        ((RpcStub) proxy).setRemoteCallback(new VoidCallback());
+        ((RpcStub) proxy).setRemoteCallback(new NoOpCallback());
         ((RpcStub) proxy).setQualifiers(qualifiers);
         return proxy;
       }

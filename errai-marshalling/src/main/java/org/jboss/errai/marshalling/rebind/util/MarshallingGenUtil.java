@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,6 +48,8 @@ import org.jboss.errai.marshalling.client.api.Marshaller;
 public class MarshallingGenUtil {
   private static final String USE_STATIC_MARSHALLERS = "errai.marshalling.use_static_marshallers";
   private static final String FORCE_STATIC_MARSHALLERS = "errai.marshalling.force_static_marshallers";
+  public static final String USE_SHORT_IMPL_NAMES = "errai.marshalling.short_names";
+
   public static final String ARRAY_VAR_PREFIX = "arrayOf_";
   public static final String ERRAI_DOLLARSIGN_REPLACEMENT = ".erraiD.";
   public static final String ERRAI_UNDERSCORE_REPLACEMENT = ".erraiU.";
@@ -106,7 +108,7 @@ public class MarshallingGenUtil {
    * <li>toType's type parameter is a non-abstract (concrete) type
    * <li>toType's type parameter is not java.lang.Object
    * </ul>
-   * 
+   *
    * @param toType
    *          The type to check for a known concrete collection element type.
    * @return The concrete element type meeting all above-mentioned criteria, or null if one or more
@@ -127,7 +129,7 @@ public class MarshallingGenUtil {
    * <li>toType's type parameter is a non-abstract (concrete) type
    * <li>toType's type parameter is not java.lang.Object
    * </ul>
-   * 
+   *
    * @param toType
    *          The type to check for a known concrete collection element type.
    * @return The concrete element type meeting all above-mentioned criteria, or null if one or more
@@ -144,7 +146,7 @@ public class MarshallingGenUtil {
    * <li>toType's key type is not a wildcard
    * <li>toType's key type is a non-abstract (concrete) type
    * </ul>
-   * 
+   *
    * @param toType
    *          The type to check for a known concrete map key type.
    * @return The concrete map key type meeting all above-mentioned criteria, or null if one or more
@@ -164,7 +166,7 @@ public class MarshallingGenUtil {
    * <li>toType's value type is not a wildcard
    * <li>toType's value type is a non-abstract (concrete) type
    * </ul>
-   * 
+   *
    * @param toType
    *          The type to check for a known concrete map key type.
    * @return The concrete map value type meeting all above-mentioned criteria, or null if one or
@@ -278,7 +280,7 @@ public class MarshallingGenUtil {
         classStructureBuilder.privateField(fieldName,
             parameterizedAs(Marshaller.class, typeParametersOf(type.getErased().asBoxed())))
             .initializesWith(Stmt.load(null)).finish();
-        
+
         initMethod.append(
             If.isNull(Stmt.loadVariable(fieldName)).append(
                 Stmt.loadVariable(fieldName).assignValue(marshallerLookup)).finish());
@@ -295,7 +297,7 @@ public class MarshallingGenUtil {
     }
     else if (marshallerCreationCallback == null) {
       marshallerLookup =
-          Stmt.invokeStatic(Marshalling.class, "getMarshaller", Stmt.loadLiteral(type.asBoxed().asClass()));
+          Stmt.invokeStatic(Marshalling.class, "getMarshaller", Stmt.loadLiteral(type.asBoxed()));
     }
     else {
       marshallerLookup =

@@ -1,23 +1,22 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2014, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2014 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.security.client.local.context;
 
 import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Event;
 import javax.inject.Inject;
 
@@ -27,8 +26,12 @@ import org.jboss.errai.bus.client.framework.BusState;
 import org.jboss.errai.bus.client.framework.ClientMessageBusImpl;
 import org.jboss.errai.common.client.api.Caller;
 import org.jboss.errai.common.client.api.ErrorCallback;
+import org.jboss.errai.common.client.api.IsElement;
 import org.jboss.errai.common.client.api.RemoteCallback;
 import org.jboss.errai.common.client.api.extension.InitVotes;
+import org.jboss.errai.common.client.dom.Div;
+import org.jboss.errai.common.client.dom.HTMLElement;
+import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.security.client.local.api.SecurityContext;
 import org.jboss.errai.security.client.local.spi.ActiveUserCache;
 import org.jboss.errai.security.shared.api.identity.User;
@@ -48,13 +51,12 @@ import org.slf4j.Logger;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMultimap;
-import com.google.gwt.user.client.ui.IsWidget;
-import com.google.gwt.user.client.ui.SimplePanel;
+import com.google.common.collect.Multimap;
 
 /**
  * @author Max Barkley <mbarkley@redhat.com>
  */
-@ApplicationScoped
+@EntryPoint
 public class SecurityContextImpl implements SecurityContext {
 
   /**
@@ -64,11 +66,27 @@ public class SecurityContextImpl implements SecurityContext {
    * performance reasons, this is preferable to scanning the whole classpath.
    */
   @Page
-  public static class SecurityRolesConstraintPage extends SimplePanel {
+  public static class SecurityRolesConstraintPage implements IsElement {
     @SuppressWarnings("unused")
     @Inject private TransitionToRole<LoginPage> loginTransition;
     @SuppressWarnings("unused")
     @Inject private TransitionToRole<SecurityError> securityErrorTransition;
+    @Inject private Div element;
+
+    @Override
+    public HTMLElement getElement() {
+      return element;
+    }
+  }
+
+  private static class PageCache {
+    final Class<?> pageClass;
+    final Multimap<String, String> pageState;
+
+    PageCache(final Class<?> pageClass, final Multimap<String, String> pageState) {
+      this.pageClass = pageClass;
+      this.pageState = pageState;
+    }
   }
 
   @Inject
@@ -89,7 +107,7 @@ public class SecurityContextImpl implements SecurityContext {
   @Inject
   private Caller<NonCachingUserService> userServiceCaller;
 
-  private Class<? extends IsWidget> lastPageCache;
+  private PageCache lastPageCache;
 
   @PostConstruct
   private void setup() {
@@ -130,12 +148,7 @@ public class SecurityContextImpl implements SecurityContext {
     }).getUser();
   }
 
-  @Override
-  public void redirectToLoginPage() {
-    redirectToLoginPage(getCurrentPage());
-  }
-
-  private Class<? extends IsWidget> getCurrentPage() {
+  private Class<?> getCurrentPage() {
     if (navigation.getCurrentPage() != null) {
       return navigation.getCurrentPage().contentType();
     }
@@ -145,20 +158,44 @@ public class SecurityContextImpl implements SecurityContext {
     }
   }
 
+  private Multimap<String, String> getCurrentPageState() {
+    return navigation.getCurrentState();
+  }
+
   @Override
-  public void redirectToLoginPage(final Class<? extends IsWidget> fromPage) {
-    lastPageCache = fromPage;
+  public Navigation getNavigation() {
+    return navigation;
+  }
+
+  @Override
+  public void redirectToLoginPage() {
+    redirectToLoginPage(getCurrentPage(), getCurrentPageState());
+  }
+
+  @Override
+  public void redirectToLoginPage(final Class<?> fromPage) {
+    redirectToLoginPage(fromPage, ImmutableMultimap.of());
+  }
+
+  @Override
+  public void redirectToLoginPage(final Class<?> fromPage, final Multimap<String, String> fromState) {
+    lastPageCache = new PageCache(fromPage, fromState);
     navigation.goToWithRole(LoginPage.class);
   }
 
   @Override
   public void redirectToSecurityErrorPage() {
-    redirectToSecurityErrorPage(getCurrentPage());
+    redirectToSecurityErrorPage(getCurrentPage(), getCurrentPageState());
   }
 
   @Override
-  public void redirectToSecurityErrorPage(final Class<? extends IsWidget> fromPage) {
-    lastPageCache = fromPage;
+  public void redirectToSecurityErrorPage(final Class<?> fromPage) {
+    redirectToSecurityErrorPage(fromPage, ImmutableMultimap.of());
+  }
+
+  @Override
+  public void redirectToSecurityErrorPage(final Class<?> fromPage, final Multimap<String, String> fromState) {
+    lastPageCache = new PageCache(fromPage, fromState);
     navigation.goToWithRole(SecurityError.class);
   }
 
@@ -174,6 +211,8 @@ public class SecurityContextImpl implements SecurityContext {
   private void performLoginStatusChangeActions(final User user) {
     StyleBindingsRegistry.get().updateStyles();
     if (user == null) {
+      throw new RuntimeException("The current user should never be null.");
+    } else if (User.ANONYMOUS.equals(user)) {
       logoutEvent.fire(new LoggedOutEvent());
     }
     else {
@@ -182,9 +221,14 @@ public class SecurityContextImpl implements SecurityContext {
   }
 
   @Override
-  public void navigateBackOrToPage(final Class<? extends IsWidget> pageType) {
+  public void navigateBackOrToPage(final Class<?> pageType) {
+    navigateBackOrToPage(pageType, ImmutableMultimap.of());
+  }
+
+  @Override
+  public void navigateBackOrToPage(final Class<?> pageType, final Multimap<String, String> pageState) {
     if (lastPageCache != null) {
-      navigation.goTo(lastPageCache, ImmutableMultimap.<String, String>of());
+      navigation.goTo(lastPageCache.pageClass, lastPageCache.pageState);
       lastPageCache = null;
     }
     else {
@@ -195,7 +239,7 @@ public class SecurityContextImpl implements SecurityContext {
   @Override
   public void navigateBackOrHome() {
     // Guaranteed to exist at compile-time.
-    final PageNode<? extends IsWidget> defaultPageNode = navigation.getPagesByRole(DefaultPage.class).iterator().next();
+    final PageNode<?> defaultPageNode = navigation.getPagesByRole(DefaultPage.class).iterator().next();
     navigateBackOrToPage(defaultPageNode.contentType());
   }
 

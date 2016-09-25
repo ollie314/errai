@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.codegen.util;
 
 import java.lang.annotation.Annotation;
@@ -46,7 +62,7 @@ public class GWTPrivateMemberAccessor implements PrivateMemberAccessor {
                                   final Modifier[] modifiers)  {
 
     final MethodCommentBuilder<? extends ClassStructureBuilder<?>> methodBuilder =
-            classBuilder.privateMethod(void.class, PrivateAccessUtil.getPrivateFieldInjectorName(field));
+            classBuilder.packageMethod(void.class, PrivateAccessUtil.getPrivateFieldAccessorName(field));
 
     if (type.getCanonicalName().equals("long")) {
       methodBuilder.annotatedWith(UNSAFE_NATIVE_LONG_ANNOTATION);
@@ -56,6 +72,9 @@ public class GWTPrivateMemberAccessor implements PrivateMemberAccessor {
       methodBuilder
               .parameters(DefParameters.fromParameters(Parameter.of(field.getDeclaringClass().getErased(), "instance"),
                       Parameter.of(type, "value")));
+    } else {
+      methodBuilder
+              .parameters(DefParameters.fromParameters(Parameter.of(type, "value")));
     }
 
     methodBuilder.modifiers(appendJsni(modifiers))
@@ -71,7 +90,7 @@ public class GWTPrivateMemberAccessor implements PrivateMemberAccessor {
                                   final Modifier[] modifiers) {
 
     final MethodBlockBuilder<? extends ClassStructureBuilder<?>> instance =
-            classBuilder.privateMethod(type, PrivateAccessUtil.getPrivateFieldInjectorName(field));
+            classBuilder.packageMethod(type, PrivateAccessUtil.getPrivateFieldAccessorName(field));
 
     if (!field.isStatic()) {
       instance.parameters(DefParameters.fromParameters(Parameter.of(field.getDeclaringClass().getErased(), "instance")));
@@ -92,32 +111,44 @@ public class GWTPrivateMemberAccessor implements PrivateMemberAccessor {
                                    final MetaMethod method,
                                    final Modifier[] modifiers) {
 
+    final MetaMethod erasedMethod = method.getDeclaringClass().getErased().getDeclaredMethod(method.getName(),
+            getErasedParamterTypes(method));
+
     final List<Parameter> wrapperDefParms = new ArrayList<Parameter>();
 
-    if (!method.isStatic()) {
-      wrapperDefParms.add(Parameter.of(method.getDeclaringClass().getErased(), "instance"));
+    if (!erasedMethod.isStatic()) {
+      wrapperDefParms.add(Parameter.of(erasedMethod.getDeclaringClass().getErased(), "instance"));
     }
 
-    final List<Parameter> methodDefParms = DefParameters.from(method).getParameters();
+    final List<Parameter> methodDefParms = DefParameters.from(erasedMethod).getParameters();
     wrapperDefParms.addAll(methodDefParms);
 
     Annotation[] annotations = NO_ANNOTATIONS;
-    for (MetaParameter p : method.getParameters()) {
+    for (MetaParameter p : erasedMethod.getParameters()) {
       if (p.getType().getCanonicalName().equals("long")) {
         annotations = new Annotation[] { UNSAFE_NATIVE_LONG_ANNOTATION };
       }
     }
-    if (method.getReturnType().getCanonicalName().equals("long")) {
+    if (erasedMethod.getReturnType().getCanonicalName().equals("long")) {
       annotations = new Annotation[] { UNSAFE_NATIVE_LONG_ANNOTATION };
     }
 
-    classBuilder.publicMethod(method.getReturnType(), PrivateAccessUtil.getPrivateMethodName(method))
+    classBuilder.publicMethod(erasedMethod.getReturnType(), PrivateAccessUtil.getPrivateMethodName(method))
             .annotatedWith(annotations)
             .parameters(DefParameters.fromParameters(wrapperDefParms))
             .modifiers(appendJsni(modifiers))
             .body()
-            ._(StringStatement.of(JSNIUtil.methodAccess(method)))
+            ._(StringStatement.of(JSNIUtil.methodAccess(erasedMethod)))
             .finish();
+  }
+
+  private MetaClass[] getErasedParamterTypes(final MetaMethod method) {
+    final MetaClass[] paramTypes = new MetaClass[method.getParameters().length];
+    for (int i = 0; i < paramTypes.length; i++) {
+      paramTypes[i] = method.getParameters()[i].getType().getErased();
+    }
+
+    return paramTypes;
   }
 
   @Override

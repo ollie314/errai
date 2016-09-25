@@ -1,12 +1,12 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -47,13 +47,36 @@ public class EntityWithUnqualifiedFields {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof EntityWithUnqualifiedFields)) return false;
-
-    EntityWithUnqualifiedFields that = (EntityWithUnqualifiedFields) o;
-
-    return !(field1 != null ? !field1.equals(that.field1) : that.field1 != null)
-            && !(field2 != null ? !field2.equals(that.field2) : that.field2 != null);
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((field1 == null) ? 0 : field1.hashCode());
+    result = prime * result + ((field2 == null) ? 0 : field2.hashCode());
+    return result;
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    final EntityWithUnqualifiedFields other = (EntityWithUnqualifiedFields) obj;
+    if (field1 == null) {
+      if (other.field1 != null)
+        return false;
+    }
+    else if (!field1.equals(other.field1))
+      return false;
+    if (field2 == null) {
+      if (other.field2 != null)
+        return false;
+    }
+    else if (!field2.equals(other.field2))
+      return false;
+    return true;
+  }
+
 }

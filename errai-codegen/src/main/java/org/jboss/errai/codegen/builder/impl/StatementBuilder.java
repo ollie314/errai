@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,8 @@ package org.jboss.errai.codegen.builder.impl;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.enterprise.util.TypeLiteral;
 
 import org.jboss.errai.codegen.BooleanExpression;
 import org.jboss.errai.codegen.Cast;
@@ -55,8 +57,6 @@ import org.jboss.errai.codegen.control.branch.ContinueStatement;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 
-import javax.enterprise.util.TypeLiteral;
-
 /**
  * The root of our fluent StatementBuilder API.
  *
@@ -66,19 +66,17 @@ import javax.enterprise.util.TypeLiteral;
 public class StatementBuilder extends AbstractStatementBuilder implements StatementBegin {
 
   private static final Pattern THIS_OR_SUPPER_PATTERN = Pattern.compile("(this|super)");
-  private static final Pattern THIS_PATTERN = Pattern.compile("(this.)(.)*");
-  
+  private static final Pattern THIS_PATTERN = Pattern.compile("(this\\.)(.)*");
+
   public StatementBuilder(final Context context) {
     super(context);
 
     if (context != null) {
-      for (final Variable v : context.getDeclaredVariables()) {
-    	  Matcher m = THIS_OR_SUPPER_PATTERN.matcher(v.getName());
-    	  if(m.matches()) continue;
-        appendCallElement(new DeclareVariable(v));
-      }
-      appendCallElement(new ResetCallElement());
+      context.getDeclaredVariables().stream()
+        .filter(v -> !THIS_OR_SUPPER_PATTERN.matcher(v.getName()).matches())
+        .forEach(v -> appendCallElement(new DeclareVariable(v)));
     }
+    appendCallElement(new ResetCallElement());
   }
 
   public static StatementBegin create() {
@@ -169,7 +167,6 @@ public class StatementBuilder extends AbstractStatementBuilder implements Statem
     return declareVariable(Variable.create(name, type, initialization));
   }
 
-
   @Override
   public StatementBuilder declareFinalVariable(final String name, final Class<?> type) {
     return declareVariable(Variable.createFinal(name, type));
@@ -202,9 +199,9 @@ public class StatementBuilder extends AbstractStatementBuilder implements Statem
 
   @Override
   public VariableReferenceContextualStatementBuilder loadVariable(final String name, final Object... indexes) {
-    Matcher m = THIS_PATTERN.matcher(name);
+    final Matcher m = THIS_PATTERN.matcher(name);
     if (m.matches()) {
-      return loadClassMember(name.replaceFirst("(this.)", ""), indexes);
+      return loadClassMember(name.replaceFirst("(this\\.)", ""), indexes);
     }
     appendCallElement(new LoadVariable(name, indexes));
     return new ContextualStatementBuilderImpl(context, callElementBuilder);
@@ -420,10 +417,12 @@ public class StatementBuilder extends AbstractStatementBuilder implements Statem
     };
   }
 
+  @Override
   public ContextualStatementBuilder castTo(final Class<?> type, final Statement statement) {
     return nestedCall(Cast.to(type, statement));
   }
 
+  @Override
   public ContextualStatementBuilder castTo(final MetaClass type, final Statement statement) {
     return nestedCall(Cast.to(type, statement));
   }

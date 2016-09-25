@@ -1,19 +1,19 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2014, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2014 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.security.shared.api;
 
 import static org.junit.Assert.*;
@@ -21,6 +21,7 @@ import static org.junit.Assert.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -39,44 +40,22 @@ public class UserCookieEncoderTest {
   }
 
   @Test
-  public void testEncodeUserCookie() {
-
+  public void encodeThenDecodeUserCookie() throws Exception {
     Collection<Role> roles = new ArrayList<Role>();
     roles.add(new RoleImpl("user"));
     roles.add(new RoleImpl("staff"));
 
-    Map<String, String> properties = new TreeMap<String, String>();
+    Map<String, String> properties = new LinkedHashMap<String, String>();
     properties.put("p1", "v1");
     properties.put("p2", "v2");
 
-    String cookieValue = UserCookieEncoder.toCookieValue(new UserImpl("fred", roles, properties));
+    User originalUser = new UserImpl("fred", roles, properties);
+    User decodedUser = UserCookieEncoder.fromCookieValue(UserCookieEncoder.toCookieValue(originalUser));
 
-
-    String expected = "{\"^EncodedType\":\"org.jboss.errai.security.shared.api.identity.UserImpl\",\"^ObjectID\":\"1\",\"name\":\"fred\","
-            + "\"roles\":{\"^EncodedType\":\"java.util.Collections$UnmodifiableSet\",\"^ObjectID\":\"2\",\"^Value\":"
-            + "[{\"^EncodedType\":\"org.jboss.errai.security.shared.api.RoleImpl\",\"^ObjectID\":\"3\",\"name\":\"staff\"},"
-            + "{\"^EncodedType\":\"org.jboss.errai.security.shared.api.RoleImpl\",\"^ObjectID\":\"4\",\"name\":\"user\"}]},"
-            + "\"groups\":{\"^EncodedType\":\"java.util.Collections$UnmodifiableSet\",\"^ObjectID\":\"5\",\"^Value\":[]},"
-            + "\"properties\":{\"^EncodedType\":\"java.util.Collections$UnmodifiableMap\",\"^ObjectID\":\"6\","
-            + "\"^Value\":{\"p2\":\"v2\",\"p1\":\"v1\"}}}";
-    assertEquals(expected, cookieValue);
-  }
-
-  @Test
-  public void testDecodePlainUserCookie() throws Exception {
-    String nonEncodedFred =
-            "{\"^EncodedType\":\"org.jboss.errai.security.shared.api.identity.UserImpl\",\"^ObjectID\":\"1\",\"name\":\"fred\","
-                    + "\"roles\":{\"^EncodedType\":\"java.util.Collections$UnmodifiableSet\",\"^ObjectID\":\"2\",\"^Value\":"
-                    + "[{\"^EncodedType\":\"org.jboss.errai.security.shared.api.RoleImpl\",\"^ObjectID\":\"3\",\"name\":\"staff\"},"
-                    + "{\"^EncodedType\":\"org.jboss.errai.security.shared.api.RoleImpl\",\"^ObjectID\":\"4\",\"name\":\"user\"}]},"
-                    + "\"groups\":{\"^EncodedType\":\"java.util.Collections$UnmodifiableSet\",\"^ObjectID\":\"5\",\"^Value\":[]},"
-                    + "\"properties\":{\"^EncodedType\":\"java.util.Collections$UnmodifiableMap\",\"^ObjectID\":\"6\","
-                    + "\"^Value\":{\"p2\":\"v2\",\"p1\":\"v1\"}}}";
-
-    User fred = UserCookieEncoder.fromCookieValue(nonEncodedFred);
-
-    String expected = "UserImpl [id=fred, roles=[staff, user], groups=[], properties={p2=v2, p1=v1}]";
-    assertEquals(expected, fred.toString());
+    assertEquals(originalUser.getIdentifier(), decodedUser.getIdentifier());
+    assertEquals(originalUser.getGroups(), decodedUser.getGroups());
+    assertEquals(originalUser.getProperties(), decodedUser.getProperties());
+    assertEquals(originalUser.getRoles(), decodedUser.getRoles());
   }
 
   /**

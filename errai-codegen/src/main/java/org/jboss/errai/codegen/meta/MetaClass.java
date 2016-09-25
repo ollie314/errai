@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,7 @@
 package org.jboss.errai.codegen.meta;
 
 import java.lang.annotation.Annotation;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -56,6 +57,8 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
    *           if {@code annotation} is null.
    */
   public abstract List<MetaMethod> getMethodsAnnotatedWith(Class<? extends Annotation> annotation);
+
+  public abstract List<MetaMethod> getDeclaredMethodsAnnotatedWith(Class<? extends Annotation> annotation);
 
   public abstract List<MetaMethod> getMethodsWithMetaAnnotations(Class<? extends Annotation> annotation);
 
@@ -126,6 +129,8 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
 
   public abstract MetaClass getSuperClass();
 
+  public abstract Collection<MetaClass> getAllSuperTypesAndInterfaces();
+
   public abstract MetaClass getComponentType();
 
   public abstract MetaClass getOuterComponentType();
@@ -168,6 +173,8 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
   public abstract boolean isAssignableFrom(Class clazz);
 
   public abstract boolean isAssignableTo(Class clazz);
+
+  public abstract boolean isDefaultInstantiableSubtypeOf(String fqcn);
 
   public abstract boolean isPrimitive();
 
@@ -242,7 +249,7 @@ public abstract class MetaClass extends AbstractHasAnnotations implements MetaTy
   public abstract MetaField getInheritedField(String name);
 
   public abstract BeanDescriptor getBeanDescriptor();
-  
+
   public abstract int hashContent();
 
 }

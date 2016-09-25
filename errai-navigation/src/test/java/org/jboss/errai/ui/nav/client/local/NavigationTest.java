@@ -1,11 +1,26 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.ui.nav.client.local;
 
 import java.util.Collection;
 
-import junit.framework.AssertionFailedError;
-
 import org.jboss.errai.common.client.util.CreationalCallback;
 import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ui.nav.client.local.api.MissingPageRoleException;
 import org.jboss.errai.ui.nav.client.local.api.PageNotFoundException;
@@ -13,17 +28,23 @@ import org.jboss.errai.ui.nav.client.local.pushstate.PushStateUtil;
 import org.jboss.errai.ui.nav.client.local.res.TestNavigationErrorHandler;
 import org.jboss.errai.ui.nav.client.local.spi.NavigationGraph;
 import org.jboss.errai.ui.nav.client.local.spi.PageNode;
+import org.jboss.errai.ui.nav.client.local.testpages.AppScopedPageWithNoLifecycleMethods;
 import org.jboss.errai.ui.nav.client.local.testpages.CircularRef1;
 import org.jboss.errai.ui.nav.client.local.testpages.CircularRef2;
+import org.jboss.errai.ui.nav.client.local.testpages.IsElementPageWithLeadingSlashPath;
 import org.jboss.errai.ui.nav.client.local.testpages.MissingPageRole;
 import org.jboss.errai.ui.nav.client.local.testpages.MissingUniquePageRole;
+import org.jboss.errai.ui.nav.client.local.testpages.NonCompositePage;
 import org.jboss.errai.ui.nav.client.local.testpages.PageA;
+import org.jboss.errai.ui.nav.client.local.testpages.PageB;
 import org.jboss.errai.ui.nav.client.local.testpages.PageBWithState;
 import org.jboss.errai.ui.nav.client.local.testpages.PageIsWidget;
 import org.jboss.errai.ui.nav.client.local.testpages.PageWithExtraState;
 import org.jboss.errai.ui.nav.client.local.testpages.PageWithLinkToIsWidget;
 import org.jboss.errai.ui.nav.client.local.testpages.PageWithNavigationControl;
 import org.jboss.errai.ui.nav.client.local.testpages.PageWithRole;
+import org.jboss.errai.ui.nav.client.local.testpages.PageWithTransitionToIsElement;
+import org.jboss.errai.ui.nav.client.local.testpages.PageWithTransitionToNonComposite;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableMultimap;
@@ -31,14 +52,15 @@ import com.google.common.collect.ImmutableMultimap.Builder;
 import com.google.common.collect.Multimap;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.event.logical.shared.ValueChangeHandler;
-import com.google.gwt.http.client.URL;
 import com.google.gwt.user.client.History;
 import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.Window;
-import com.google.gwt.user.client.ui.IsWidget;
+import com.google.gwt.user.client.Window.Location;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.SimplePanel;
 import com.google.web.bindery.event.shared.HandlerRegistration;
+
+import junit.framework.AssertionFailedError;
 
 public class NavigationTest extends AbstractErraiCDITest {
 
@@ -68,6 +90,22 @@ public class NavigationTest extends AbstractErraiCDITest {
   protected void gwtTearDown() throws Exception {
     navigation.cleanUp();
     super.gwtTearDown();
+  }
+
+  public void testNavigationToNonCompositePage() throws Exception {
+    navigation.goTo(NonCompositePage.class.getSimpleName());
+    assertEquals("Did not navigate to non composite page.", NonCompositePage.class, navigation.currentPage.contentType());
+  }
+
+  public void testNavigationFromNonCompositePage() throws Exception {
+    try {
+      testNavigationToNonCompositePage();
+    } catch (AssertionError ae) {
+      throw new AssertionError("Precondition failed: Could not navigate to non-composite page.", ae);
+    }
+
+    navigation.goTo(PageB.class, ImmutableMultimap.<String, String>of());
+    assertEquals("Did not navigate to PageB from composite.", PageB.class, navigation.currentPage.contentType());
   }
 
   public void testMissingPage() throws Exception {
@@ -177,7 +215,7 @@ public class NavigationTest extends AbstractErraiCDITest {
   }
 
   public void testGetMissingPageByRole() throws Exception {
-    final Collection<PageNode<? extends IsWidget>> pagesByRole = navGraph.getPagesByRole(MissingPageRole.class);
+    final Collection<PageNode<?>> pagesByRole = navGraph.getPagesByRole(MissingPageRole.class);
 
     assertNotNull(pagesByRole);
     assertTrue(pagesByRole.isEmpty());
@@ -234,6 +272,44 @@ public class NavigationTest extends AbstractErraiCDITest {
 
     delayTestFinish(5000);
     page.getTransitionToIsWidget().go();
+  }
+
+  public void testTransitionToNonCompositePage() throws Exception {
+    final PageWithTransitionToNonComposite pageWithTransition = IOC.getBeanManager().lookupBean(PageWithTransitionToNonComposite.class).getInstance();
+    navigation.goTo("");
+    assertFalse("Precondition failed: Should not start test on " + NonCompositePage.class.getSimpleName(),
+            navigation.currentPage.contentType().equals(NonCompositePage.class));
+    pageWithTransition.transition.go();
+    assertTrue("Should have navigated to " + NonCompositePage.class.getSimpleName(),
+            navigation.currentPage.contentType().equals(NonCompositePage.class));
+
+  }
+
+  public void testTransitionToIsElementPage() throws Exception {
+    final PageWithTransitionToIsElement pageWithTransition = IOC.getBeanManager().lookupBean(PageWithTransitionToIsElement.class).getInstance();
+    navigation.goTo("");
+    assertFalse("Precondition failed: Should not start test on " + IsElementPageWithLeadingSlashPath.class.getSimpleName(),
+            navigation.currentPage.contentType().equals(IsElementPageWithLeadingSlashPath.class));
+    pageWithTransition.transition.go();
+    assertEquals("Should have navigated to " + IsElementPageWithLeadingSlashPath.class.getSimpleName(),
+            IsElementPageWithLeadingSlashPath.class, navigation.currentPage.contentType());
+
+  }
+
+  public void testTransitionToPageWithLeadingSlash() throws Exception {
+    final PageWithTransitionToIsElement pageWithTransition = IOC.getBeanManager().lookupBean(PageWithTransitionToIsElement.class).getInstance();
+    try {
+      navigation.goTo("");
+      assertFalse("Precondition failed: Should not start test on " + IsElementPageWithLeadingSlashPath.class.getSimpleName(),
+              navigation.currentPage.contentType().equals(IsElementPageWithLeadingSlashPath.class));
+      pageWithTransition.transition.go();
+      assertEquals("Should have navigated to " + IsElementPageWithLeadingSlashPath.class.getSimpleName(),
+              IsElementPageWithLeadingSlashPath.class, navigation.currentPage.contentType());
+    } catch (Exception e) {
+      throw new AssertionError("Precondition failed.", e);
+    }
+
+    assertEquals("#" + IsElementPageWithLeadingSlashPath.IS_ELEMENT_PAGE, Location.getHash());
   }
 
   public void testIsWidgetAnchorTransition() {
@@ -348,8 +424,8 @@ public class NavigationTest extends AbstractErraiCDITest {
   }
 
   public void testNavigationControl() throws Exception {
-    final PageWithNavigationControl page = IOC.getBeanManager().lookupBean(PageWithNavigationControl.class)
-            .getInstance();
+    final PageWithNavigationControl page = Factory.maybeUnwrapProxy(IOC.getBeanManager().lookupBean(PageWithNavigationControl.class)
+            .getInstance());
 
     navigation.goTo(PageWithNavigationControl.class, ArrayListMultimap.<String, String> create());
     assertEquals(PageWithNavigationControl.class, navigation.getCurrentPage().contentType());
@@ -363,7 +439,7 @@ public class NavigationTest extends AbstractErraiCDITest {
 
   /**
    * Give the bootstrapper time to attach the Navigation content panel to the RootPanel and then run a test.
-   * 
+   *
    * @param test
    *          The test code to be executed after the content panel is attached
    * @param timeout
@@ -397,9 +473,9 @@ public class NavigationTest extends AbstractErraiCDITest {
       }
     }.scheduleRepeating(interval);
   }
-  
+
   public void testURLWithExtraKeyValuePairs() throws Exception {
-    String url = "page/123/string;var3=4";
+    String url = "/page/123/string;var3=4";
     HistoryToken encodedToken = htFactory.parseURL(url);
     assertEquals("Unexpected state map contents: " + encodedToken.getState(), "123", encodedToken.getState()
             .get("var1").iterator().next());
@@ -410,7 +486,7 @@ public class NavigationTest extends AbstractErraiCDITest {
   }
 
   public void testURLWithNonAsciiCharset() throws Exception {
-    String url = "page/123/параметр パラメーター 参数;var3=4";
+    String url = "/page/123/параметр パラメーター 参数;var3=4";
     HistoryToken encodedToken = htFactory.parseURL(url);
     assertEquals("Unexpected state map contents: " + encodedToken.getState(), "123", encodedToken.getState()
             .get("var1").iterator().next());
@@ -429,7 +505,7 @@ public class NavigationTest extends AbstractErraiCDITest {
 
     Multimap<String, String> pageStateMap = builder.build();
     String decodedToken = URLPattern.decodeParsingCharacters(htFactory.createHistoryToken(pageName, pageStateMap).toString());
-    assertEquals("Incorrect HistoryToken URL generated: " + decodedToken, "page/123/параметр パラメーター 参数;var3=4", decodedToken);
+    assertEquals("Incorrect HistoryToken URL generated: " + decodedToken, "/page/123/параметр パラメーター 参数;var3=4", decodedToken);
   }
 
   public void testPageStateWithOneExtraParam() throws Exception {
@@ -438,13 +514,13 @@ public class NavigationTest extends AbstractErraiCDITest {
     builder.put("var1", "123");
     builder.put("var2", "string");
     builder.put("var3", "4");
-    
+
     Multimap<String, String> pageStateMap = builder.build();
     String decodedToken = URLPattern.decodeParsingCharacters(htFactory.createHistoryToken(pageName, pageStateMap)
                                                                .toString());
-    assertEquals("Incorrect HistoryToken URL generated: " + decodedToken, "page/123/string;var3=4", decodedToken);
+    assertEquals("Incorrect HistoryToken URL generated: " + decodedToken, "/page/123/string;var3=4", decodedToken);
   }
-  
+
   public void testPageStateWithMultipleExtraParams() throws Exception {
     String pageName = "PageWithPathParameters";
     Builder<String, String> builder = ImmutableMultimap.builder();
@@ -452,38 +528,38 @@ public class NavigationTest extends AbstractErraiCDITest {
     builder.put("var2", "string");
     builder.put("var3", "4");
     builder.put("var4", "thing");
-    
+
     Multimap<String, String> pageStateMap = builder.build();
     String decodedToken = URLPattern.decodeParsingCharacters(htFactory.createHistoryToken(pageName, pageStateMap)
                                                                .toString());
-    assertEquals("Incorrect HistoryToken URL generated: " + decodedToken, "page/123/string;var3=4&var4=thing", decodedToken);
+    assertEquals("Incorrect HistoryToken URL generated: " + decodedToken, "/page/123/string;var3=4&var4=thing", decodedToken);
   }
-  
+
   public void testPageReloadWithChangedPageStateUsingGoTo() throws Exception {
     PageBWithState.hitCount = 0;
-    
+
     Builder<String, String> oldBuilder = ImmutableMultimap.builder();
     oldBuilder.put("uuid", "oldstate");
     Multimap<String, String> oldState = oldBuilder.build();
     navigation.goTo(PageBWithState.class, oldState);
     assertEquals("Did not hit @PageShowing method", 1, PageBWithState.hitCount);
-    
+
     Builder<String, String> newBuilder = ImmutableMultimap.builder();
     newBuilder.put("uuid", "newstate");
     Multimap<String, String> newState = newBuilder.build();
     navigation.goTo(PageBWithState.class, newState);
     assertEquals("Did not hit @PageShowing method", 2, PageBWithState.hitCount);
   }
-  
+
   public void testPageReloadWhenPageStateChangedInURLBar() throws Exception {
     PageBWithState.hitCount = 0;
-    
+
     Builder<String, String> oldBuilder = ImmutableMultimap.builder();
     oldBuilder.put("uuid", "oldstate");
     Multimap<String, String> state = oldBuilder.build();
     navigation.goTo(PageBWithState.class, state);
     assertEquals("Did not hit @PageShowing method", 1, PageBWithState.hitCount);
-    
+
     History.newItem("page_b_with_state;uuid=newstate", true);
     assertEquals("Did not hit @PageShowing method", 2, PageBWithState.hitCount);
   }
@@ -509,13 +585,19 @@ public class NavigationTest extends AbstractErraiCDITest {
         assertFalse(PushStateUtil.isPushStateActivated());
         assertEquals("", Navigation.getAppContext());
       }
-      
+
     }, TIMEOUT, 500);
   }
-  
+
   public void testNavigationPanelInjection() {
-    NavigationPanelTestApp app = 
+    NavigationPanelTestApp app =
             IOC.getBeanManager().lookupBean(NavigationPanelTestApp.class).getInstance();
     assertNotNull(app.getNavigationPanel());
+  }
+
+  public void testAppScopedPageWithNoLifecycleMethodsIsLoadedOnNavigation() throws Exception {
+    assertEquals("Precondition failed: the page should not have been loaded before navigation.", 0, AppScopedPageWithNoLifecycleMethods.postConstructCount);
+    navigation.goTo(AppScopedPageWithNoLifecycleMethods.class.getSimpleName());
+    assertEquals("The page bean should have been loaded when the page was displayed", 1, AppScopedPageWithNoLifecycleMethods.postConstructCount);
   }
 }

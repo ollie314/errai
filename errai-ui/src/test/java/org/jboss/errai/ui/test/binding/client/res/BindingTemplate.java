@@ -1,84 +1,53 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.ui.test.binding.client.res;
 
-import javax.inject.Inject;
-
-import org.jboss.errai.databinding.client.api.DataBinder;
-import org.jboss.errai.ui.shared.api.annotations.AutoBound;
-import org.jboss.errai.ui.shared.api.annotations.Bound;
-import org.jboss.errai.ui.shared.api.annotations.DataField;
-import org.jboss.errai.ui.shared.api.annotations.Templated;
 import org.jboss.errai.ui.test.common.client.TestModel;
+import org.jboss.errai.ui.test.common.client.dom.Element;
+import org.jboss.errai.ui.test.common.client.dom.TextInputElement;
 
 import com.google.gwt.dom.client.DivElement;
-import com.google.gwt.user.client.DOM;
-import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.Label;
 import com.google.gwt.user.client.ui.TextBox;
 
-@Templated
-public class BindingTemplate extends Composite {
+/**
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
+ */
+public interface BindingTemplate<W extends BindingItem> {
 
-  @Bound(property = "id")
-  @DataField
-  private final DivElement idDiv = DOM.createElement("div").cast();
+  Element getRoot();
 
-  @Inject
-  @Bound
-  @DataField
-  private Label id;
+  DivElement getIdDiv();
 
-  @Inject
-  @Bound(property = "child.name")
-  @DataField
-  private TextBox name;
+  Label getIdLabel();
 
-  @Inject
-  @Bound(property = "lastChanged", converter = BindingDateConverter.class)
-  @DataField("dateField")
-  private TextBox date;
+  TextBox getNameTextBox();
 
-  @Inject
-  @Bound
-  @DataField("phone")
-  private TextBox phoneNumber;
+  TextBox getDateTextBox();
 
-  @Inject
-  @Bound
-  @DataField
-  private BindingListWidget children;
-  
-  private final TestModel model;
+  TextBox getPhoneNumberBox();
 
-  @Inject
-  public BindingTemplate(@AutoBound DataBinder<TestModel> binder) {
-    model = binder.getModel();
-  }
+  Element getTitleField();
 
-  public DivElement getIdDiv() {
-    return idDiv;
-  }
+  TextInputElement getAge();
 
-  public Label getIdLabel() {
-    return id;
-  }
+  BindingListWidget<W> getListWidget();
 
-  public TextBox getNameTextBox() {
-    return name;
-  }
+  TestModel getModel();
 
-  public TextBox getDateTextBox() {
-    return date;
-  }
-
-  public TextBox getPhoneNumberBox() {
-    return phoneNumber;
-  }
-  
-  public BindingListWidget getListWidget() {
-    return children;
-  }
-
-  public TestModel getModel() {
-    return model;
-  }
 }

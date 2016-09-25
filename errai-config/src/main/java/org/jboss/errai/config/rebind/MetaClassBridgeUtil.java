@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 JBoss, by Red Hat, Inc
+ * Copyright (C) 2012 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,7 @@ import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
 import org.jboss.errai.common.metadata.RebindUtils;
 import org.jboss.errai.common.rebind.CacheStore;
 import org.jboss.errai.common.rebind.CacheUtil;
+
 import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.TreeLogger;
 import com.google.gwt.core.ext.typeinfo.JClassType;
@@ -70,18 +71,18 @@ public abstract class MetaClassBridgeUtil {
     if (typeOracle != null) {
       final Map<String, MetaClass> classesToPush = new HashMap<String, MetaClass>(typeOracle.getTypes().length);
       final Set<String> translatable = new HashSet<String>(RebindUtils.findTranslatablePackages(context));
-      final Set<String> reloadable = RebindUtils.getReloadablePackageNames(context);
+      // Need to remove these or else we get issues from annotations and loading
+      // of emulated Object and Class instead of real ones.
       translatable.remove("java.lang");
       translatable.remove("java.lang.annotation");
+      final Set<String> reloadable = RebindUtils.getReloadablePackageNames(context);
 
       for (final JClassType type : typeOracle.getTypes()) {
         if (!translatable.contains(type.getPackage().getName())) {
- //         logger.log(com.google.gwt.core.ext.TreeLogger.Type.DEBUG, "Skipping non-translatable " + type.getQualifiedSourceName());
           continue;
         }
 
         if (type.isAnnotation() != null || type.getQualifiedSourceName().equals("java.lang.annotation.Annotation")) {
-   //       logger.log(com.google.gwt.core.ext.TreeLogger.Type.DEBUG, "Caching annotation type " + type.getQualifiedSourceName());
 
           if (!MetaClassFactory.canLoadClass(type.getQualifiedBinaryName())) {
             throw new RuntimeException("a new annotation has been introduced (" + type.getQualifiedSourceName() + "); "
@@ -91,19 +92,21 @@ public abstract class MetaClassBridgeUtil {
           final MetaClass clazz = JavaReflectionClass
               .newUncachedInstance(MetaClassFactory.loadClass(type.getQualifiedBinaryName()));
 
-          if (isReloadable(clazz, reloadable))
+          if (isReloadable(clazz, reloadable)) {
             classesToPush.put(clazz.getFullyQualifiedName(), clazz);
-          else
+          } else if (!cache.isKnownType(clazz.getFullyQualifiedName())) {
             cache.pushCache(clazz);
+          }
         }
         else {
           logger.log(TreeLogger.Type.DEBUG, "Caching translatable type " + type.getQualifiedSourceName());
           final MetaClass clazz = GWTClass.newUncachedInstance(typeOracle, type);
 
-          if (isReloadable(clazz, reloadable))
+          if (isReloadable(clazz, reloadable)) {
             classesToPush.put(clazz.getFullyQualifiedName(), clazz);
-          else
+          } else if (!cache.isKnownType(clazz.getFullyQualifiedName())) {
             cache.pushCache(clazz);
+          }
         }
       }
 

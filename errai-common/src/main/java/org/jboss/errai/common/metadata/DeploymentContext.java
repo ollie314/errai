@@ -1,11 +1,11 @@
 /*
- * Copyright 2009 JBoss, a divison Red Hat, Inc
+ * Copyright (C) 2009 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.common.metadata;
 
 import java.io.File;
@@ -39,12 +40,12 @@ import org.slf4j.LoggerFactory;
  * @author Heiko Braun <hbraun@redhat.com>
  */
 public class DeploymentContext {
-  private List<URL> configUrls;
-  private Map<String, File> subContexts = new HashMap<String, File>();
-  private Set<String> processedUrls = new HashSet<String>();
-  private Set<File> createdTmpFiles = new HashSet<File>();
+  private final List<URL> configUrls;
+  private final Map<String, File> subContexts = new HashMap<String, File>();
+  private final Set<String> processedUrls = new HashSet<String>();
+  private final Set<File> createdTmpFiles = new HashSet<File>();
 
-  private Logger log = LoggerFactory.getLogger(DeploymentContext.class);
+  private final Logger log = LoggerFactory.getLogger(DeploymentContext.class);
 
   public DeploymentContext(List<URL> configUrls) {
     this.configUrls = configUrls;
@@ -71,12 +72,12 @@ public class DeploymentContext {
 
     final List<URL> superAndSubContexts = new ArrayList<URL>();
 
-    for (Map.Entry<String, File> entry : subContexts.entrySet()) {
-      File unzipped = entry.getValue();
+    for (final Map.Entry<String, File> entry : subContexts.entrySet()) {
+      final File unzipped = entry.getValue();
       try {
         superAndSubContexts.add(unzipped.toURI().toURL());
       }
-      catch (MalformedURLException e) {
+      catch (final MalformedURLException e) {
         throw new RuntimeException(e);
       }
     }
@@ -91,8 +92,8 @@ public class DeploymentContext {
   }
 
   public void close() {
-    for (File f : createdTmpFiles) {
-      boolean deleted = deleteDirectory(f);
+    for (final File f : createdTmpFiles) {
+      final boolean deleted = deleteDirectory(f);
       if (!deleted) {
         //note: use an error message instead of an exception
         log.error("failed to cleanup: files were not deleted: " + f.getPath() + " (exists:" + f.exists() + ")");
@@ -102,13 +103,15 @@ public class DeploymentContext {
 
   static public boolean deleteDirectory(File path) {
     if (path.exists()) {
-      File[] files = path.listFiles();
-      for (int i = 0; i < files.length; i++) {
-        if (files[i].isDirectory()) {
-          deleteDirectory(files[i]);
-        }
-        else {
-          files[i].delete();
+      final File[] files = path.listFiles();
+      if (files != null) {
+        for (int i = 0; i < files.length; i++) {
+          if (files[i].isDirectory()) {
+            deleteDirectory(files[i]);
+          }
+          else {
+            files[i].delete();
+          }
         }
       }
     }

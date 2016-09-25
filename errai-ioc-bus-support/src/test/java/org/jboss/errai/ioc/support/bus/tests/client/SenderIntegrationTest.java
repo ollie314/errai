@@ -1,23 +1,42 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.ioc.support.bus.tests.client;
 
-import com.google.gwt.user.client.Timer;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+import org.jboss.errai.bus.client.api.base.NoSubscribersToDeliverTo;
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.bus.client.api.messaging.MessageCallback;
-import org.jboss.errai.bus.client.api.base.NoSubscribersToDeliverTo;
 import org.jboss.errai.bus.server.annotations.Service;
 import org.jboss.errai.common.client.api.ErrorCallback;
 import org.jboss.errai.common.client.protocols.MessageParts;
+import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.api.ReplyTo;
 import org.jboss.errai.ioc.client.api.ToSubject;
 import org.jboss.errai.ioc.support.bus.client.Sender;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.util.Arrays;
-import java.util.List;
+import com.google.gwt.user.client.Timer;
 
 public class SenderIntegrationTest extends AbstractErraiIOCBusTest {
-  @Singleton
+  @EntryPoint
   public static class SenderTestInjectionPoint {
     static SenderTestInjectionPoint instance;
 
@@ -33,13 +52,13 @@ public class SenderIntegrationTest extends AbstractErraiIOCBusTest {
     @Inject
     @ToSubject("EmptyReplyService")
     Sender<List<String>> noReplySender;
-    
+
     @Inject
     @ToSubject("NonExistingService")
     Sender<List<String>> brokenSender;
   }
 
-  @Singleton
+  @EntryPoint
   @Service
   public static class ClientListService implements MessageCallback {
     static List<String> latestResponse;
@@ -51,7 +70,7 @@ public class SenderIntegrationTest extends AbstractErraiIOCBusTest {
     }
   }
 
-  @Singleton
+  @EntryPoint
   @Service
   public static class TestCompleterService implements MessageCallback {
     static boolean replyReceived = false;
@@ -125,21 +144,21 @@ public class SenderIntegrationTest extends AbstractErraiIOCBusTest {
       }
     });
   }
-  
+
   public void testSenderWithErrorCallback() {
     runAfterInit(new Runnable() {
       @Override
       public void run() {
         List<String> originalList = Arrays.asList("this", "is", "my", "list");
         ClientListService.latestResponse = null;
-        SenderTestInjectionPoint.instance.brokenSender.send(originalList, 
+        SenderTestInjectionPoint.instance.brokenSender.send(originalList,
             new ErrorCallback<Message>() {
               @Override
               public boolean error(Message message, Throwable throwable) {
                 assertNotNull("Throwable is null.", throwable);
                 try {
                   throw throwable;
-                } 
+                }
                 catch(NoSubscribersToDeliverTo e) {
                   finishTest();
                 }

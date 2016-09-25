@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -98,7 +98,7 @@ public class MethodInvocation extends AbstractStatement {
     final MetaParameterizedType gSuperClass = inputType.getGenericSuperClass();
     final MetaClass superClass = inputType.getSuperClass();
 
-    if (superClass != null && superClass.getTypeParameters() != null & superClass.getTypeParameters().length > 0
+    if (superClass != null && superClass.getTypeParameters() != null && superClass.getTypeParameters().length > 0
             && gSuperClass != null && gSuperClass.getTypeParameters().length > 0) {
       for (int i = 0; i < superClass.getTypeParameters().length; i++) {
         final String varName = superClass.getTypeParameters()[i].getName();
@@ -142,7 +142,7 @@ public class MethodInvocation extends AbstractStatement {
         resolvedType = (MetaClass) callParmType;
       }
       else if (callParmType instanceof MetaWildcardType) {
-        MetaType[] upperBounds = ((MetaWildcardType) callParmType).getUpperBounds();
+        final MetaType[] upperBounds = ((MetaWildcardType) callParmType).getUpperBounds();
         if (upperBounds != null && upperBounds.length == 1 && upperBounds[0] instanceof MetaClass) {
           resolvedType = (MetaClass) upperBounds[0];
         }
@@ -172,9 +172,6 @@ public class MethodInvocation extends AbstractStatement {
         if (parameterizedCallParmType != null) {
           resolveTypeVariable(typeParm,
                   ((MetaParameterizedType) parameterizedCallParmType).getTypeParameters()[typeParmIndex++]);
-        }
-        else {
-          resolveTypeVariable(typeParm, callParmType);
         }
       }
     }

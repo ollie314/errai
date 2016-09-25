@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -342,7 +342,7 @@ public class DefaultJavaMappingStrategy implements MappingStrategy {
 
                 // Bind via JSNI
                 bindingStatement = Stmt.invokeStatic(classStructureBuilder.getClassDefinition(),
-                    PrivateAccessUtil.getPrivateFieldInjectorName(field),
+                    PrivateAccessUtil.getPrivateFieldAccessorName(field),
                     loadVariable("entity"), val);
               }
 
@@ -613,7 +613,7 @@ public class DefaultJavaMappingStrategy implements MappingStrategy {
           }
 
           return Stmt.invokeStatic(classStructureBuilder.getClassDefinition(), PrivateAccessUtil
-              .getPrivateFieldInjectorName(field),
+              .getPrivateFieldAccessorName(field),
               loadVariable("a0"));
         }
       }

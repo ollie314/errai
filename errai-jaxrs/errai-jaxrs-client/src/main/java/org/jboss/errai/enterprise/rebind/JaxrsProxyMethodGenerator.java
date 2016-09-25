@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -135,16 +135,16 @@ public class JaxrsProxyMethodGenerator {
     String path = resourceMethod.getPath();
     ContextualStatementBuilder pathValue = Stmt.loadLiteral(path);
 
-    for (String pathParamName : JaxrsResourceMethodParameters.getPathParameterNames(path)) {
-      String pathParamId = pathParamName;
-      if (pathParamName.contains(":")) {
-        pathParamId = pathParamName.split(":")[0];
+    for (String pathParamExpr : JaxrsResourceMethodParameters.getPathParameterExpressions(path)) {
+      String pathParamId = pathParamExpr;
+      if (pathParamExpr.contains(":")) {
+        pathParamId = pathParamExpr.split(":")[0];
       }
       Statement pathParam = marshal(params.getPathParameter(pathParamId));
       if (params.needsEncoding(pathParamId)) {
         pathParam = encodePath(pathParam);
       }
-      pathValue = pathValue.invoke("replace", "{" + pathParamName + "}", pathParam);
+      pathValue = pathValue.invoke("replace", "{" + pathParamExpr + "}", pathParam);
     }
 
     if (params.getMatrixParameters() != null) {

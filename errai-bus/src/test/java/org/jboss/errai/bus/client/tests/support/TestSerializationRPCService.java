@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -206,7 +206,7 @@ public interface TestSerializationRPCService {
   public EntityWithInheritedTypeVariable<String> testEntityWithInheritedTypeVariable(EntityWithInheritedTypeVariable<String> entity);
 
   public GenericEntityWithConstructorMapping<String> testGenericEntityWithConstructorMapping(GenericEntityWithConstructorMapping<String> entity);
-  
+
   public <A extends GenericEntity<R>, R extends Student> R testIncrediblyGenericRpcMethod(A arg);
 
   public EntityWithUnderscore_InClassName testEntityWithUnderscore_InClassName(EntityWithUnderscore_InClassName e);
@@ -214,8 +214,12 @@ public interface TestSerializationRPCService {
   public EntityWithMixedMappingTypes testEntityWithMixedMappingTypes(EntityWithMixedMappingTypes entity);
 
   public EntityWithFactoryMethodAndMixedMappingTypes testEntityWithFactoryMethodAndMixedMappingTypes(EntityWithFactoryMethodAndMixedMappingTypes entity);
-  
+
   public Outer testBackReferenceOrderingWithMapsTo(Outer entity);
-  
+
   public Outer2 testBackReferenceOrderingWithMapsToInverted(Outer2 entity);
+
+  public EntityWithClassFieldAndMap testEntityWithClassField(EntityWithClassFieldAndMap entity);
+
+  public Object testMapSuperTypesPropertyCausesMarshallerMappingCreationForSuperType(Object entity);
 }

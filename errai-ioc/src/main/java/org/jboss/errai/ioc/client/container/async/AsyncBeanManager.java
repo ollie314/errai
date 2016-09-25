@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 JBoss, by Red Hat, Inc
+ * Copyright (C) 2012 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,36 +16,33 @@
 
 package org.jboss.errai.ioc.client.container.async;
 
-import org.jboss.errai.ioc.client.container.ClientBeanManager;
-
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 
+import org.jboss.errai.ioc.client.container.ClientBeanManager;
+
 /**
+ * Contract for injectable client-side instances for run-time bean management in
+ * asynchronous IOC mode.
+ * 
  * @author Mike Brock
+ * @author Max Barkley <mbarkley@redhat.com>
+ * @author Christian Sadilek <csadilek@redhat.com>
  */
 public interface AsyncBeanManager extends ClientBeanManager {
 
   /**
-   * Destroy the bean and all other beans associated with its {@link AsyncCreationalContext}. Because some
-   * destruction activity may be asynchronous, this method accepts a second parameter as a callback to
-   * be notified when the destruction of all the beans has been done.
-   *
-   * @param ref
-   *      the reference to the bean to be destroyed.
-   * @param runnable
-   *      a runnable callback to be called when all the beans have been destroyed.
-   */
-  public void destroyBean(final Object ref, final Runnable runnable);
-
-  /**
-   * Looks up all beans with the specified bean name as specified by {@link javax.inject.Named}.
+   * Looks up all beans by name. The name is either the fully qualified type
+   * name of an assignable type or a given name as specified by
+   * {@link javax.inject.Named}.
    *
    * @param name
-   *     the name of bean to lookup
+   *          the fqcn of an assignable type, or a given name specified by
+   *          {@link javax.inject.Named}, must not be null.
    *
    * @return and unmodifiable list of all beans with the specified name.
    */
+  @SuppressWarnings("rawtypes")
   Collection<AsyncBeanDef> lookupBeans(String name);
 
   /**

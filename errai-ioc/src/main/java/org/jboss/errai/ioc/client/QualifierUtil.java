@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.ioc.client;
 
 import java.lang.annotation.Annotation;
@@ -8,6 +24,7 @@ import java.util.Map;
 
 import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
+import javax.inject.Named;
 
 /**
  * A utility class for testing the equality of qualifiers at runtime.
@@ -42,6 +59,7 @@ public class QualifierUtil {
       ANY_ANNOTATION
   };
 
+  @SuppressWarnings("serial")
   private static final Map<String, Annotation> DEFAULT_MATCHING_MAP = new HashMap<String, Annotation>() {
     {
       for (final Annotation a : DEFAULT_QUALIFIERS) {
@@ -71,11 +89,32 @@ public class QualifierUtil {
     return factory.hashCodeOf(a1);
   }
 
+  /**
+   * @param allOf
+   *          A collection of qualifiers that must be satisfied.
+   * @param in
+   *          A collection of qualifiers for potentially satisfying
+   *          {@code allOf}. If this collection is empty, then it represents the
+   *          universal qualifier that satisfies all other qualifiers. This is
+   *          unambiguous since it is otherwise impossible to have no qualifiers
+   *          (everything has {@link Any}).
+   * @return If {@code in} is non-empty then this returns true iff every
+   *         annotation in {@code allOff} contains an equal annotation in
+   *         {@code in}. If {@code in} is empty, then this returns true.
+   */
   public static boolean matches(final Collection<Annotation> allOf, final Collection<Annotation> in) {
+    if (in.isEmpty()) {
+      return true;
+    } else {
+      return contains(allOf, in);
+    }
+  }
+
+  public static boolean contains(final Collection<Annotation> allOf, final Collection<Annotation> in) {
     if (allOf.isEmpty()) return true;
 
-    final Map<String, Annotation> allOfMap = new HashMap<String, Annotation>();
-    final Map<String, Annotation> inMap = new HashMap<String, Annotation>();
+    final Map<String, Annotation> allOfMap = new HashMap<>();
+    final Map<String, Annotation> inMap = new HashMap<>();
 
     for (final Annotation a : in) {
       inMap.put(a.annotationType().getName(), a);
@@ -105,10 +144,10 @@ public class QualifierUtil {
 
 
   public static boolean isDefaultAnnotations(final Collection<Annotation> annotations) {
-    return annotations == null || (annotations.size() == 2 && matches(DEFAULT_MATCHING_MAP.values(), annotations));
+    return annotations == null || (annotations.size() == 2 && contains(DEFAULT_MATCHING_MAP.values(), annotations));
   }
 
-  public static void initFromFactoryProvider(QualifierEqualityFactoryProvider provider) {
+  public static void initFromFactoryProvider(final QualifierEqualityFactoryProvider provider) {
     factoryProvider = provider;
     factory = null;
     init();
@@ -153,5 +192,20 @@ public class QualifierUtil {
 
   public static Annotation[] getDefaultQualifiers() {
     return DEFAULT_QUALIFIERS;
+  }
+
+  public static Named createNamed(final String name) {
+    return new Named() {
+
+      @Override
+      public Class<? extends Annotation> annotationType() {
+        return Named.class;
+      }
+
+      @Override
+      public String value() {
+        return name;
+      }
+    };
   }
 }

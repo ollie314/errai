@@ -4,7 +4,7 @@
   <parent>
     <artifactId>errai-parent</artifactId>
     <groupId>org.jboss.errai</groupId>
-    <version>3.2.1-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -54,12 +54,10 @@
       <plugin>
         <artifactId>maven-failsafe-plugin</artifactId>
         <configuration>
-          <skipTests>false</skipTests>
           <additionalClasspathElements>
             <additionalClasspathElement>${basedir}/test-classes/</additionalClasspathElement>
             <additionalClasspathElement>${basedir}/src/test/java/</additionalClasspathElement>
             <additionalClasspathElement>${basedir}/src/test/resources/</additionalClasspathElement>
-
           </additionalClasspathElements>
           <useSystemClassLoader>false</useSystemClassLoader>
 

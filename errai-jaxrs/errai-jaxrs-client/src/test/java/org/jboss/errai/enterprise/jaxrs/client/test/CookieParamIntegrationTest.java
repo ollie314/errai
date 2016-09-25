@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,31 +37,31 @@ public class CookieParamIntegrationTest extends AbstractErraiJaxrsTest {
   public void testGetWithCookieParam() {
     RestClient.setCookie("myCookie", "1701");
     call(CookieParamTestService.class,
-        new AssertionCallback<Integer>("@GET with @CookieParam failed", 1701)).getWithIntegerCookieParam(null);
+        new SimpleAssertionCallback<Integer>("@GET with @CookieParam failed", 1701)).getWithIntegerCookieParam(null);
   }
 
   @Test
   public void testGetWithOverridingCookieParam() {
     RestClient.setCookie("myCookie", "1701");
     call(CookieParamTestService.class,
-        new AssertionCallback<Integer>("@GET with @CookieParam failed", 1702)).getWithIntegerCookieParam(1702);
+        new SimpleAssertionCallback<Integer>("@GET with @CookieParam failed", 1702)).getWithIntegerCookieParam(1702);
   }
 
   @Test
   public void testPostWithCookieParam() {
     call(CookieParamTestService.class,
-        new AssertionCallback<String>("@POST with @CookieParam failed", "1701")).postWithStringCookieParam(1702l, "1701");
+        new SimpleAssertionCallback<String>("@POST with @CookieParam failed", "1701")).postWithStringCookieParam(1702l, "1701");
   }
 
   @Test
   public void testPutWithCookieParam() {
     call(CookieParamTestService.class,
-        new AssertionCallback<Long>("@PUT with @CookieParam failed", 1701l)).putWithLongCookieParam("1702", 1701l);
+        new SimpleAssertionCallback<Long>("@PUT with @CookieParam failed", 1701l)).putWithLongCookieParam("1702", 1701l);
   }
 
   @Test
   public void testDeleteWithCookieParam() {
     call(CookieParamTestService.class,
-        new AssertionCallback<Double>("@DELETE with @CookieParam failed", 1701.0)).deleteWithDoubleCookieParam(1701d);
+        new SimpleAssertionCallback<Double>("@DELETE with @CookieParam failed", 1701.0)).deleteWithDoubleCookieParam(1701d);
   }
 }

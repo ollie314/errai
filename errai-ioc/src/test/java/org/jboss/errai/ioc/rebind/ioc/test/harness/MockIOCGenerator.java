@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -71,10 +71,7 @@ public class MockIOCGenerator {
 
     final String classStr = bootstrapGenerator.generate(packageName, className);
 
-    final File fileCacheDir = RebindUtils.getErraiCacheDir();
-    final File cacheFile = new File(fileCacheDir.getAbsolutePath() + "/" + className + ".java");
-
-    RebindUtils.writeStringToFile(cacheFile, classStr);
+    RebindUtils.writeStringToJavaSourceFileInErraiCacheDir(packageName, className, classStr);
 
     try {
       final File directory =
@@ -98,8 +95,9 @@ public class MockIOCGenerator {
 
       System.out.println("wrote file: " + sourceFile.getAbsolutePath());
 
+      @SuppressWarnings("unchecked")
       final Class<? extends Bootstrapper> bsClass =
-          ClassChangeUtil.compileAndLoad(sourceFile, packageName, className);
+          (Class<? extends Bootstrapper>) ClassChangeUtil.compileAndLoad(sourceFile, packageName, className);
 
       return bsClass;
 

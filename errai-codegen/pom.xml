@@ -4,7 +4,7 @@
   <parent>
     <artifactId>errai-parent</artifactId>
     <groupId>org.jboss.errai</groupId>
-    <version>3.2.1-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <name>Errai::Codegen</name>
@@ -52,14 +52,18 @@ runtime dependencies on it and it breaks deployment on JBoss AS and Tomcat -->
     <plugins>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
-        <configuration>
-          <skipTests>false</skipTests>
+        <configuration combine.self="override">
+          <excludes>
+          </excludes>
           <additionalClasspathElements>
             <additionalClasspathElement>${basedir}/target/test-classes</additionalClasspathElement>
             <additionalClasspathElement>${basedir}/target/classes</additionalClasspathElement>
             <additionalClasspathElement>${basedir}/src/main/java</additionalClasspathElement>
             <additionalClasspathElement>${basedir}/src/test/java</additionalClasspathElement>
           </additionalClasspathElements>
+          <systemPropertyVariables>
+            <errai.codegen.details>true</errai.codegen.details>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
       
@@ -83,28 +87,16 @@ runtime dependencies on it and it breaks deployment on JBoss AS and Tomcat -->
       <build>
         <plugins>
           <plugin>
-            <artifactId>maven-surefire-plugin</artifactId>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>selenium-maven-plugin</artifactId>
             <configuration>
-              <skipTests>false</skipTests>
-              <additionalClasspathElements>
-                <additionalClasspathElement>${basedir}/target/test-classes</additionalClasspathElement>
-                <additionalClasspathElement>${basedir}/target/classes</additionalClasspathElement>
-                <additionalClasspathElement>${basedir}/src/main/java</additionalClasspathElement>
-                <additionalClasspathElement>${basedir}/src/test/java</additionalClasspathElement>
-              </additionalClasspathElements>
+              <skip>true</skip>
             </configuration>
           </plugin>
           <plugin>
             <artifactId>maven-failsafe-plugin</artifactId>
             <configuration>
               <skipTests>true</skipTests>
-            </configuration>
-          </plugin>
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>selenium-maven-plugin</artifactId>
-            <configuration>
-              <skip>true</skip>
             </configuration>
           </plugin>
         </plugins>

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.codegen.util;
 
 import java.util.HashMap;
@@ -181,26 +197,34 @@ public class PrivateAccessUtil {
     privateMemberAccessor.makeMethodAccessible(classBuilder, m, modifiers);
   }
 
-  public static String condensify(final String packagePrefix) {
-    return "_" + String.valueOf(packagePrefix.hashCode()).replaceFirst("\\-", "\\$");
-  }
-
-  public static String getPrivateFieldInjectorName(final MetaField field) {
-    return condensify(field.getDeclaringClass().getFullyQualifiedName())
-        + "_" + condensify(field.getType().getFullyQualifiedName())
+  public static String getPrivateFieldAccessorName(final MetaField field) {
+    return field.getDeclaringClass().getName()
+        + "_" + getTypeName(field.getType())
         + "_" + field.getName();
   }
 
   public static String getPrivateMethodName(final MetaMethod method) {
     final MetaClass declaringClass = method.getDeclaringClass();
-    String name =  condensify(declaringClass.getFullyQualifiedName()) + "_" + method.getName();
-    
+    String name =  declaringClass.getName() + "_" + method.getName();
+
     if (method.getParameters() != null) {
-      for (MetaParameter p : method.getParameters()) {
-       name += "_" + p.getType().getName(); 
+      for (final MetaParameter p : method.getParameters()) {
+       name += "_" + getTypeName(p.getType());
       }
     }
-    
+
     return name;
+  }
+
+  private static String getTypeName(final MetaClass type) {
+    if (type.isArray()) {
+      return type.getName().replace("[]", "_array");
+    } else {
+      return type.getName();
+    }
+  }
+
+  public static String condensify(String name) {
+    return name.replace('.', '_').replace('$', '_');
   }
 }

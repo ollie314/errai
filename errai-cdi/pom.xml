@@ -11,7 +11,7 @@
   <parent>
     <groupId>org.jboss.errai</groupId>
     <artifactId>errai-parent</artifactId>
-    <version>3.2.1-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -59,7 +59,8 @@
   <modules>
     <module>jboss</module>
     <module>errai-cdi-client</module>
-    <module>weld-integration</module>
+    <module>errai-cdi-shared</module>
+    <module>errai-cdi-server</module>
   </modules>
 
   <build>

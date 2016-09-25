@@ -5,7 +5,7 @@
   <parent>
     <artifactId>errai-parent</artifactId>
     <groupId>org.jboss.errai</groupId>
-    <version>3.2.1-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -28,8 +28,10 @@
         <plugins>
           <plugin>
             <artifactId>maven-surefire-plugin</artifactId>
-            <configuration>
-              <skipTests>false</skipTests>
+            <!-- Override exclusions in parent -->
+            <configuration combine.self="override">
+              <excludes>
+              </excludes>
               <includes>
                 <include>**/*Test.java</include>
                 <include>**/*Tests.java</include>

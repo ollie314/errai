@@ -1,4 +1,4 @@
-//generated using Reflections JavaCodeSerializer [Tue Jul 28 14:54:13 EDT 2015]
+//generated using Reflections JavaCodeSerializer [Mon Jul 04 17:40:28 EDT 2016]
 package org.jboss.errai.reflections;
 
 import static org.jboss.errai.reflections.serializers.JavaCodeSerializer.*;
@@ -32,14 +32,14 @@ public interface MyTestModelStore extends IElement {
 					}
 					public interface TestModel$C4 extends IClass {
 						public interface f1 extends IField {}
-						public interface f3 extends IField {}
 						public interface f2 extends IField {}
-						public interface c2toC3 extends IMethod {}
-						public interface m1_int_java$lang$String$$ extends IMethod {}
-						public interface m1_int$$$$_java$lang$String$$$$ extends IMethod {}
+						public interface f3 extends IField {}
 						public interface m1 extends IMethod {}
+						public interface m1_int$$$$_java$lang$String$$$$ extends IMethod {}
+						public interface m1_int_java$lang$String$$ extends IMethod {}
 						public interface m3 extends IMethod {}
 						public interface m4 extends IMethod {}
+						public interface c2toC3 extends IMethod {}
 					}
 					public interface TestModel$C5 extends IClass {
 					}

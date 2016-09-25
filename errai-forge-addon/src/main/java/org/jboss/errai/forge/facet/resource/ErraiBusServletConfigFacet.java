@@ -1,20 +1,30 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2014, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2014 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.forge.facet.resource;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
 
 import org.jboss.errai.forge.facet.plugin.WarPluginFacet;
 import org.jboss.errai.forge.xml.ElementFactory;
@@ -22,15 +32,6 @@ import org.jboss.forge.addon.facets.constraints.FacetConstraint;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathExpressionException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * This facet configures the ErraiServlet used by the errai-bus project.
@@ -87,7 +88,7 @@ public class ErraiBusServletConfigFacet extends AbstractXmlResourceFacet {
         final NodeList values = servlet.getElementsByTagName("param-value");
         for (int i = 0; i < values.getLength(); i++) {
           final Node prevSibling = values.item(i).getPreviousSibling();
-          if (prevSibling != null && prevSibling.getNodeValue() != null && prevSibling.equals("auto-discover-services")) {
+          if (prevSibling != null && prevSibling.getNodeValue() != null) {
             values.item(i).getParentNode().removeChild(values.item(i));
             break outer;
           }

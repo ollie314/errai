@@ -1,19 +1,19 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2013, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.demo.grocery.client.local;
 
 import com.google.common.collect.ImmutableMultimap;
@@ -22,6 +22,7 @@ import com.google.gwt.user.client.ui.Button;
 import com.google.gwt.user.client.ui.Composite;
 import org.jboss.errai.demo.grocery.client.local.producer.StoreListProducer.StoreChangedEvent;
 import org.jboss.errai.demo.grocery.client.shared.Store;
+import org.jboss.errai.ioc.client.api.LoadAsync;
 import org.jboss.errai.ui.client.widget.ListWidget;
 import org.jboss.errai.ui.nav.client.local.Page;
 import org.jboss.errai.ui.nav.client.local.TransitionTo;
@@ -39,6 +40,7 @@ import java.util.List;
 @Dependent
 @Templated("#root")
 @Page
+@LoadAsync
 public class StoresPage extends Composite {
 
     @Inject
@@ -68,7 +70,7 @@ public class StoresPage extends Composite {
     @EventHandler("addStoreButton")
     public void onStoreAddButtonClick(ClickEvent event) {
         Store newStore = new Store();
-        em.persist(newStore);        
+        em.persist(newStore);
         toStorePage.go(ImmutableMultimap.of("id", String.valueOf(newStore.getId())));
     }
 }

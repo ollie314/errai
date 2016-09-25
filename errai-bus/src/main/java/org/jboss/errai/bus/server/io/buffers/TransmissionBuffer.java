@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 JBoss, by Red Hat, Inc
+ * Copyright (C) 2012 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,6 @@
 
 package org.jboss.errai.bus.server.io.buffers;
 
-import org.jboss.errai.bus.server.io.ByteWriteAdapter;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -27,6 +25,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+
+import org.jboss.errai.bus.server.io.ByteWriteAdapter;
 
 /**
  * A ring-based buffer implementation that provides contention-free writing of <i>1..n</i> colors. In this case,
@@ -51,7 +51,7 @@ public class TransmissionBuffer implements Buffer {
   public static final long STARTING_SEQUENCE = 0;
 
   public static final int DEFAULT_SEGMENT_SIZE = 1024 * 16;              /* 16 Kilobytes */
-  private static final int DEFAULT_BUFFER_SIZE = 2048;                   /* 2048 x 16kb = 32 Megabytes */
+  public static final int DEFAULT_BUFFER_SIZE = 2048;                   /* 2048 x 16kb = 32 Megabytes */
 
   private static final int SEGMENT_HEADER_SIZE = 4;                      /* to accommodate a 32-bit integer  */
 
@@ -213,7 +213,7 @@ public class TransmissionBuffer implements Buffer {
     try {
       final int allocSize = ((writeSize + SEGMENT_HEADER_SIZE) / segmentSize) + 1;
       final long writeHead = writeSequenceNumber.getAndAdd(allocSize);
-      final int seq = (int) writeHead % segments;
+      final int seq = (int) (writeHead % segments);
 
       int writeCursor = seq * segmentSize;
 
@@ -244,8 +244,12 @@ public class TransmissionBuffer implements Buffer {
       headSequence = writeHead + allocSize;
     }
     finally {
-      bufferColor.wake();
-      lock.unlock();
+      try {
+        bufferColor.wake();
+      }
+      finally {
+        lock.unlock();
+      }
     }
   }
 
@@ -263,31 +267,36 @@ public class TransmissionBuffer implements Buffer {
    */
   @Override
   public boolean read(final ByteWriteAdapter outputStream, final BufferColor bufferColor) throws IOException {
-    // obtain this color's read lock
-    bufferColor.lock.lock();
-
-    // get the current head position.
-    final long writeHead = headSequence;
-
-    // get the tail position for the color.
-    long read = bufferColor.sequence.get();
-    long lastSeq = read;
-
-    // checkOverflow(read);
+    long lastSeq = -1l;
 
     try {
+      // obtain this color's read lock
+      bufferColor.lock.lock();
+
+      // get the current head position.
+      final long writeHead = headSequence;
+
+      // get the tail position for the color.
+      long read = bufferColor.sequence.get();
+      lastSeq = read;
+
+      // checkOverflow(read);
+
       while ((read = readNextChunk(writeHead, read, bufferColor, outputStream, null)) != -1)
         lastSeq = read;
 
       return lastSeq != read;
     }
     finally {
+      try {
       // move the tail sequence for this color up.
       if (lastSeq != -1)
         bufferColor.sequence.set(lastSeq);
-
-      // release the read lock on this color/
-      bufferColor.lock.unlock();
+      }
+      finally {
+        // release the read lock on this color/
+        bufferColor.lock.unlock();
+      }
     }
   }
 
@@ -413,7 +422,7 @@ public class TransmissionBuffer implements Buffer {
           // lets wait for some data to come available
           bufferColor.dataWaiting.await();
         }
-        catch (InterruptedException e) {
+        catch (final InterruptedException e) {
           // if there's another reader contending, they should probably know about this.
           bufferColor.dataWaiting.signal();
           throw e;
@@ -479,7 +488,7 @@ public class TransmissionBuffer implements Buffer {
           // wait around for some data.
           nanos = bufferColor.dataWaiting.awaitNanos(nanos);
         }
-        catch (InterruptedException e) {
+        catch (final InterruptedException e) {
           bufferColor.dataWaiting.signal();
           throw e;
         }
@@ -566,7 +575,7 @@ public class TransmissionBuffer implements Buffer {
         try {
           nanos = bufferColor.dataWaiting.awaitNanos(nanos);
         }
-        catch (InterruptedException e) {
+        catch (final InterruptedException e) {
           bufferColor.dataWaiting.signal();
           throw e;
         }
@@ -712,10 +721,10 @@ public class TransmissionBuffer implements Buffer {
    * @return the size in bytes.
    */
   private int readChunkSize(final int position) {
-    return ((((int) _buffer.get(position + 3)) & 0xFF)) +
-        ((((int) _buffer.get(position + 2)) & 0xFF) << 8) +
-        ((((int) _buffer.get(position + 1)) & 0xFF) << 16) +
-        ((((int) _buffer.get(position)) & 0xFF) << 24);
+    return (((_buffer.get(position + 3)) & 0xFF)) +
+        (((_buffer.get(position + 2)) & 0xFF) << 8) +
+        (((_buffer.get(position + 1)) & 0xFF) << 16) +
+        (((_buffer.get(position)) & 0xFF) << 24);
   }
 
   private void writeChunkSize(final int position, final int size) {
@@ -741,7 +750,7 @@ public class TransmissionBuffer implements Buffer {
       int pos = i * segmentSize;
       int length = readChunkSize(pos);
       build.append("Segment ").append(i).append(" <color:")
-          .append((int) segmentMap[i]).append(";length:").append(length)
+          .append(segmentMap[i]).append(";length:").append(length)
           .append(";location:").append(pos).append(">");
 
       pos += SEGMENT_HEADER_SIZE;
@@ -765,9 +774,8 @@ public class TransmissionBuffer implements Buffer {
     }
   }
 
-  @SuppressWarnings("UnusedDeclaration")
   public List<String> dumpSegmentsAsList() {
-    final List<String> list = new ArrayList<String>();
+    final List<String> list = new ArrayList<>();
 
     for (int i = 0; i < segmentMap.length && i < headSequence; i++) {
       int pos = i * segmentSize;

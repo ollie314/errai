@@ -10,7 +10,7 @@
   <parent>
     <groupId>org.jboss.errai</groupId>
     <artifactId>cdi-integration-parent</artifactId>
-    <version>3.2.1-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -23,7 +23,7 @@
 
     <!-- JBoss -->
     <dependency>
-      <groupId>org.wildfly</groupId>
+      <groupId>org.wildfly.core</groupId>
       <artifactId>wildfly-cli</artifactId>
       <exclusions>
         <exclusion>
@@ -34,16 +34,9 @@
     </dependency>
 
     <dependency>
-      <groupId>org.wildfly</groupId>
+      <groupId>org.wildfly.core</groupId>
       <artifactId>wildfly-embedded</artifactId>
-      <version>8.1.0.Final</version>
-    </dependency>
-
-
-    <dependency>
-      <groupId>org.jboss.as</groupId>
-      <artifactId>jboss-as-dist</artifactId>
-      <type>zip</type>
+      <version>2.1.0.Final</version>
     </dependency>
 
     <!-- GWT -->
@@ -56,7 +49,13 @@
     <dependency>
       <groupId>com.google.gwt</groupId>
       <artifactId>gwt-dev</artifactId>
-      <scope>provided</scope>
+      <exclusions>
+        <!-- Contains a ServletContainerInitializer that breaks the EmbeddedWildfFlyLauncher -->
+        <exclusion>
+          <groupId>org.eclipse.jetty</groupId>
+          <artifactId>apache-jsp</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 

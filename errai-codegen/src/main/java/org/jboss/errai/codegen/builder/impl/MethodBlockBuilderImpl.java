@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +15,13 @@
  */
 
 package org.jboss.errai.codegen.builder.impl;
+
+import java.lang.annotation.Annotation;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import javax.enterprise.util.TypeLiteral;
 
 import org.jboss.errai.codegen.DefModifiers;
 import org.jboss.errai.codegen.DefParameters;
@@ -27,11 +34,6 @@ import org.jboss.errai.codegen.builder.MethodCommentBuilder;
 import org.jboss.errai.codegen.literal.LiteralFactory;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
-
-import javax.enterprise.util.TypeLiteral;
-import java.lang.annotation.Annotation;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author Christian Sadilek <csadilek@redhat.com>
@@ -60,20 +62,18 @@ public class MethodBlockBuilderImpl<T> extends BlockBuilderImpl<T>
 
   @Override
   public MethodBlockBuilder<T> annotatedWith(final Annotation... annotations) {
-    for (final Annotation a : annotations) {
-      this.annotations.add(a);
-    }
+    Arrays.stream(annotations).forEach(a -> this.annotations.add(a));
     return this;
   }
 
   @Override
-  public BlockBuilder<T> throws_(final Class<? extends Throwable>... exceptionTypes) {
+  public MethodBlockBuilder<T> throws_(final Class<? extends Throwable>... exceptionTypes) {
     throwsDeclaration = ThrowsDeclaration.of(exceptionTypes);
     return this;
   }
 
   @Override
-  public BlockBuilder<T> throws_(final MetaClass... exceptions) {
+  public MethodBlockBuilder<T> throws_(final MetaClass... exceptions) {
     throwsDeclaration = ThrowsDeclaration.of(exceptions);
     return this;
   }
@@ -129,7 +129,7 @@ public class MethodBlockBuilderImpl<T> extends BlockBuilderImpl<T>
         p.add(MetaClassFactory.get((TypeLiteral) o));
       }
     }
-    
+
     defParameters = DefParameters.fromTypeArray(p.toArray(new MetaClass[p.size()]));
 
     return this;

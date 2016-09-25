@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 JBoss, by Red Hat, Inc
+ * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,22 +13,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.ui.rebind;
+
+import static org.apache.commons.lang3.StringUtils.capitalize;
+import static org.jboss.errai.codegen.builder.impl.ObjectBuilder.newInstanceOf;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
+import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.castTo;
+import static org.jboss.errai.codegen.util.Stmt.declareFinalVariable;
+import static org.jboss.errai.codegen.util.Stmt.declareVariable;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+import static org.jboss.errai.codegen.util.Stmt.load;
+import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
+import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+import static org.jboss.errai.codegen.util.Stmt.nestedCall;
+import static org.jboss.errai.codegen.util.Stmt.newObject;
+import static org.jboss.errai.ioc.util.GeneratedNamesUtil.qualifiedClassNameToShortenedIdentifier;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.enterprise.util.TypeLiteral;
 
+import org.apache.xerces.impl.dtd.models.DFAContentModel;
 import org.jboss.errai.codegen.Cast;
 import org.jboss.errai.codegen.InnerClass;
 import org.jboss.errai.codegen.Parameter;
@@ -36,35 +58,45 @@ import org.jboss.errai.codegen.Statement;
 import org.jboss.errai.codegen.Variable;
 import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
 import org.jboss.errai.codegen.builder.BlockBuilder;
+import org.jboss.errai.codegen.builder.ClassDefinitionBuilderInterfaces;
 import org.jboss.errai.codegen.builder.ClassStructureBuilder;
+import org.jboss.errai.codegen.builder.ClassStructureBuilderAbstractMethodOption;
+import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
-import org.jboss.errai.codegen.meta.MetaField;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.MetaParameterizedType;
 import org.jboss.errai.codegen.meta.MetaType;
 import org.jboss.errai.codegen.meta.impl.build.BuildMetaClass;
 import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
-import org.jboss.errai.codegen.util.PrivateAccessType;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.common.client.api.annotations.BrowserEvent;
 import org.jboss.errai.common.client.ui.ElementWrapperWidget;
+import org.jboss.errai.common.client.ui.HasValue;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
 import org.jboss.errai.ioc.client.api.EntryPoint;
 import org.jboss.errai.ioc.client.container.DestructionCallback;
+import org.jboss.errai.ioc.rebind.ioc.bootstrapper.InjectUtil;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.client.local.spi.TemplateRenderingCallback;
+import org.jboss.errai.ui.shared.DataFieldMeta;
 import org.jboss.errai.ui.shared.Template;
+import org.jboss.errai.ui.shared.TemplateStyleSheet;
 import org.jboss.errai.ui.shared.TemplateUtil;
+import org.jboss.errai.ui.shared.TemplateWidgetMapper;
 import org.jboss.errai.ui.shared.api.annotations.DataField;
+import org.jboss.errai.ui.shared.api.annotations.DataField.ConflictStrategy;
 import org.jboss.errai.ui.shared.api.annotations.EventHandler;
+import org.jboss.errai.ui.shared.api.annotations.ForEvent;
 import org.jboss.errai.ui.shared.api.annotations.SinkNative;
 import org.jboss.errai.ui.shared.api.annotations.Templated;
+import org.jboss.errai.ui.shared.api.style.StyleBindingsRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +108,7 @@ import com.google.gwt.event.dom.client.DomEvent;
 import com.google.gwt.event.dom.client.DomEvent.Type;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.ClientBundle.Source;
+import com.google.gwt.resources.client.CssResource;
 import com.google.gwt.resources.client.TextResource;
 import com.google.gwt.user.client.Event;
 import com.google.gwt.user.client.EventListener;
@@ -83,13 +116,17 @@ import com.google.gwt.user.client.ui.Composite;
 import com.google.gwt.user.client.ui.RootPanel;
 import com.google.gwt.user.client.ui.Widget;
 
+import jsinterop.annotations.JsType;
+
 /**
  * Generates the code required for {@link Templated} classes.
  *
  * @author <a href="mailto:lincolnbaxter@gmail.com">Lincoln Baxter, III</a>
  * @author Christian Sadilek <csadilek@redhat.com>
  */
-@CodeDecorator
+
+//This decorator has to run after the decorator for @DataField
+@CodeDecorator(order=1)
 public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   private static final String CONSTRUCTED_TEMPLATE_SET_KEY = "constructedTemplate";
 
@@ -100,72 +137,53 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(final InjectableInstance<Templated> ctx) {
-    final MetaClass declaringClass = ctx.getEnclosingType();
-    
-    Class<?> templateProvider =  
-            ctx.getEnclosingType().getAnnotation(Templated.class).provider();
-    boolean customProvider = templateProvider != Templated.DEFAULT_PROVIDER.class;
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
+    final MetaClass declaringClass = decorable.getDecorableDeclaringType();
 
-    if (!declaringClass.isAssignableTo(Composite.class)) {
+    final Templated anno = (Templated) decorable.getAnnotation();
+    final Class<?> templateProvider = anno.provider();
+    final boolean customProvider = templateProvider != Templated.DEFAULT_PROVIDER.class;
+    final boolean defaultStyleSheetPath = "".equals(anno.stylesheet());
+    final String styleSheetPath = getTemplateStyleSheetPath(declaringClass);
+    final boolean styleSheet = (Thread.currentThread().getContextClassLoader().getResource(styleSheetPath) != null);
+
+    if (declaringClass.isAssignableTo(Composite.class)) {
+      logger.warn("The @Templated class, {}, extends Composite. This will not be supported in future versions.", declaringClass.getFullyQualifiedName());
+    }
+    if (!defaultStyleSheetPath && !styleSheet) {
       throw new GenerationException("@Templated class [" + declaringClass.getFullyQualifiedName()
-          + "] must extend base class [" + Composite.class.getName() + "].");
+              + "] declared a stylesheet [" + styleSheetPath + "] that could not be found.");
     }
 
-    for (final MetaField field : declaringClass.getFields()) {
-      if (field.isAnnotationPresent(DataField.class)) {
-        ctx.getInjectionContext().addExposedField(field, PrivateAccessType.Both);
-      }
-    }
+    final List<Statement> initStmts = new ArrayList<>();
 
-    final List<Statement> initStmts = new ArrayList<Statement>();
-
-    generateTemplatedInitialization(ctx, initStmts, customProvider);
+    generateTemplatedInitialization(decorable, controller, initStmts, customProvider, styleSheet);
 
     if (declaringClass.isAnnotationPresent(EntryPoint.class)) {
-      initStmts.add(Stmt.invokeStatic(RootPanel.class, "get").invoke("add", Refs.get("obj")));
+      initStmts.add(Stmt.invokeStatic(RootPanel.class, "get").invoke("add", Refs.get("instance")));
     }
 
-    final Statement initCallback;
     if (customProvider) {
-      Statement init = 
+      final Statement init =
         Stmt.invokeStatic(TemplateUtil.class, "provideTemplate",
-          templateProvider,      
-          getTemplateUrl(ctx.getEnclosingType()),
+          templateProvider,
+          getTemplateUrl(declaringClass),
           Stmt.newObject(TemplateRenderingCallback.class)
             .extend()
             .publicOverridesMethod("renderTemplate", Parameter.of(String.class, "template", true))
             .appendAll(initStmts)
             .finish()
             .finish());
-      
-      initCallback = InjectUtil.createInitializationCallback(declaringClass, "obj", Collections.singletonList(init));
-    } 
-    else {
-      initCallback = InjectUtil.createInitializationCallback(declaringClass, "obj", initStmts);  
-    }
-    Statement addInitCallback
-      = Stmt.loadVariable("context").invoke("addInitializationCallback",  
-          Refs.get(ctx.getInjector().getInstanceVarName()), initCallback);
 
-    List<Statement> stmts = new ArrayList<Statement>();
-    if (ctx.getInjectionContext().isAsync()) {
-      final Statement runnable = Stmt.newObject(Runnable.class).extend()
-        .publicOverridesMethod("run")
-        .append(addInitCallback)
-        .finish()
-        .finish();
-      stmts.add(Stmt.loadVariable("async").invoke("runOnFinish", runnable));
+      controller.addInitializationStatements(Collections.singletonList(init));
     }
     else {
-      stmts.add(addInitCallback);
+      controller.addInitializationStatements(initStmts);
     }
-    
-    Statement destructionCallback = generateTemplateDestruction(ctx);
-    if (destructionCallback != null) {
-      stmts.add(destructionCallback);
-    }
-    return stmts;
+
+    controller.addDestructionStatements(generateTemplateDestruction(decorable));
+    controller.addInitializationStatementsToEnd(Collections.<Statement>singletonList(invokeStatic(StyleBindingsRegistry.class, "get")
+        .invoke("updateStyles", Refs.get("instance"))));
   }
 
   /**
@@ -173,306 +191,441 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
    *
    * @return statement representing the template destruction logic.
    */
-  private Statement generateTemplateDestruction(final InjectableInstance<Templated> ctx) {
-    List<Statement> destructionStatements = new ArrayList<Statement>();
-    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(ctx, ctx.getEnclosingType());
+  private List<Statement> generateTemplateDestruction(final Decorable decorable) {
+    final List<Statement> destructionStatements = new ArrayList<>();
+    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getDecorableDeclaringType());
     final Map<String, MetaClass> dataFieldTypes =
-      DataFieldCodeDecorator.aggregateDataFieldTypeMap(ctx, ctx.getEnclosingType());
+      DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getDecorableDeclaringType());
 
     for (final String fieldName : dataFields.keySet()) {
-      Statement field = dataFields.get(fieldName);
-      MetaClass fieldType = dataFieldTypes.get(fieldName);
+      final Statement field = dataFields.get(fieldName);
+      final MetaClass fieldType = dataFieldTypes.get(fieldName);
 
       if (fieldType.isAssignableTo(Element.class)) {
         destructionStatements.add(Stmt.invokeStatic(ElementWrapperWidget.class, "removeWidget", field));
       }
     }
 
-    if (destructionStatements.isEmpty())
-      return null;
+    if (decorable.getDecorableDeclaringType().isAssignableTo(Composite.class)) {
+      destructionStatements.add(Stmt.invokeStatic(TemplateUtil.class, "cleanupWidget", decorable.getAccessStatement()));
+    } else {
+      destructionStatements.add(Stmt.invokeStatic(TemplateUtil.class, "cleanupTemplated", decorable.getAccessStatement()));
+    }
 
-    Statement destructionLogic =
-      Stmt.loadVariable("context").invoke("addDestructionCallback",
-        Refs.get(ctx.getInjector().getInstanceVarName()),
-        InjectUtil.createDestructionCallback(ctx.getEnclosingType(), "obj", destructionStatements));
-
-    return destructionLogic;
+    return destructionStatements;
   }
 
   /**
    * Generate the actual construction logic for our {@link Templated} component
+   * @param styleSheet
    */
   @SuppressWarnings("serial")
-  private void generateTemplatedInitialization(final InjectableInstance<Templated> ctx,
+  private void generateTemplatedInitialization(final Decorable decorable,
+                                               final FactoryController controller,
                                                final List<Statement> initStmts,
-                                               boolean customProvider) {
+                                               final boolean customProvider,
+                                               final boolean styleSheet) {
 
-    final Map<MetaClass, BuildMetaClass> constructed = getConstructedTemplateTypes(ctx);
-    final MetaClass declaringClass = ctx.getEnclosingType();
-    
+    final Map<MetaClass, BuildMetaClass> constructed = getConstructedTemplateTypes(decorable);
+    final MetaClass declaringClass = decorable.getDecorableDeclaringType();
+
     if (!constructed.containsKey(declaringClass)) {
-      final String templateVarName = InjectUtil.getUniqueVarName();
-      
+      final String templateVarName = "templateFor" + decorable.getDecorableDeclaringType().getName();
+
       /*
        * Generate this component's ClientBundle resource if necessary
        */
-      if (!customProvider) {
-        generateTemplateResourceInterface(ctx, declaringClass);
+      if (!customProvider || styleSheet) {
+        generateTemplateResourceInterface(decorable, declaringClass, customProvider, styleSheet);
 
       /*
        * Instantiate the ClientBundle Template resource
        */
       initStmts.add(Stmt
-          .declareVariable(getConstructedTemplateTypes(ctx).get(declaringClass))
+          .declareVariable(getConstructedTemplateTypes(decorable).get(declaringClass))
           .named(templateVarName)
           .initializeWith(
-              Stmt.invokeStatic(GWT.class, "create", getConstructedTemplateTypes(ctx).get(declaringClass))));
+              Stmt.invokeStatic(GWT.class, "create", constructed.get(declaringClass))));
+
+        if (styleSheet)
+          initStmts.add(Stmt.loadVariable(templateVarName).invoke("getStyle").invoke("ensureInjected"));
       }
-      
+
       /*
        * Get root Template Element
        */
-      final String rootTemplateElementVarName = InjectUtil.getUniqueVarName();
+      final String parentOfRootTemplateElementVarName = "parentElementForTemplateOf" + decorable.getDecorableDeclaringType().getName();
       initStmts.add(Stmt
           .declareVariable(Element.class)
-          .named(rootTemplateElementVarName)
+          .named(parentOfRootTemplateElementVarName)
           .initializeWith(
-              Stmt.invokeStatic(TemplateUtil.class, "getRootTemplateElement", 
-                  (customProvider) ? Variable.get("template") : 
+              Stmt.invokeStatic(TemplateUtil.class, "getRootTemplateParentElement",
+                  (customProvider) ? Variable.get("template") :
                     Stmt.loadVariable(templateVarName).invoke("getContents").invoke("getText"),
-                  getTemplateFileName(ctx.getEnclosingType()),
+                  getTemplateFileName(declaringClass),
                   getTemplateFragmentName(declaringClass))));
 
-      final Statement rootTemplateElement = Stmt.loadVariable(rootTemplateElementVarName);
+      final Statement rootTemplateElement = Stmt.invokeStatic(TemplateUtil.class, "getRootTemplateElement",
+              Stmt.loadVariable(parentOfRootTemplateElementVarName));
 
       /*
        * If i18n is enabled for this module, translate the root template element here
        */
       if (!customProvider) {
-        translateTemplate(ctx, initStmts, rootTemplateElement);
+        translateTemplate(decorable, initStmts, rootTemplateElement);
       }
 
       /*
        * Get a reference to the actual Composite component being created
        */
-      final Statement component = Refs.get(ctx.getInjector().getInstanceVarName());
+      final Statement component = Refs.get("instance");
 
       /*
        * Get all of the data-field Elements from the Template
        */
-      final String dataFieldElementsVarName = InjectUtil.getUniqueVarName();
+      final String dataFieldElementsVarName = "dataFieldElements";
       initStmts.add(Stmt.declareVariable(dataFieldElementsVarName,
           new TypeLiteral<Map<String, Element>>() {},
-          Stmt.invokeStatic(TemplateUtil.class, "getDataFieldElements", 
+          Stmt.invokeStatic(TemplateUtil.class, "getDataFieldElements",
                   rootTemplateElement))
       );
+
+      final String dataFieldMetasVarName = "dataFieldMetas";
+      initStmts.addAll(generateDataFieldMetas(dataFieldMetasVarName, decorable));
 
       /*
        * Attach Widget field children Elements to the Template DOM
        */
-      final String fieldsMapVarName = InjectUtil.getUniqueVarName();
+      final String fieldsMapVarName = "templateFieldsMap";
 
       /*
        * The Map<String, Widget> to store actual component field references.
        */
-      initStmts.add(Stmt.declareVariable(fieldsMapVarName, new TypeLiteral<Map<String, Widget>>() {},
-          Stmt.newObject(new TypeLiteral<LinkedHashMap<String, Widget>>() {}))
+      initStmts.add(declareVariable(fieldsMapVarName, new TypeLiteral<Map<String, Widget>>() {},
+          newObject(new TypeLiteral<LinkedHashMap<String, Widget>>() {}))
       );
       final Statement fieldsMap = Stmt.loadVariable(fieldsMapVarName);
 
-      generateComponentCompositions(ctx, initStmts, component, rootTemplateElement,
-          Stmt.loadVariable(dataFieldElementsVarName), fieldsMap);
+      generateComponentCompositions(decorable, initStmts, component, rootTemplateElement,
+          loadVariable(dataFieldElementsVarName), fieldsMap, loadVariable(dataFieldMetasVarName));
 
-      generateEventHandlerMethodClasses(ctx, initStmts, component, dataFieldElementsVarName, fieldsMap);
+      generateEventHandlerMethodClasses(decorable, controller, initStmts, dataFieldElementsVarName, fieldsMap);
     }
   }
 
-  private void generateEventHandlerMethodClasses(final InjectableInstance<Templated> ctx,
-                                                 final List<Statement> initStmts, final Statement component,
-                                                 final String dataFieldElementsVarName, final Statement fieldsMap) {
+  @SuppressWarnings("serial")
+  private List<Statement> generateDataFieldMetas(final String dataFieldMetasVarName, final Decorable decorable) {
+    final Map<String, DataField> annoMap = DataFieldCodeDecorator.aggregateDataFieldAnnotationMap(decorable, decorable.getType());
+    final List<Statement> stmts = new ArrayList<>(annoMap.size()+1);
+    stmts.add(declareFinalVariable(dataFieldMetasVarName, new TypeLiteral<Map<String, DataFieldMeta>>() {
+    }, newObject(parameterizedAs(HashMap.class, typeParametersOf(String.class, DataFieldMeta.class)), annoMap.size())));
+    annoMap
+      .entrySet()
+      .stream()
+      .map(entry -> {
+        final String fieldName = entry.getKey();
+        final DataField dataField = entry.getValue();
+        Statement dataFieldMetaInstance;
+        if (dataField.attributeRules().length == 0 && dataField.defaultStrategy().equals(ConflictStrategy.USE_TEMPLATE)) {
+          dataFieldMetaInstance = newObject(DataFieldMeta.class);
+        }
+        else {
+          dataFieldMetaInstance = newObject(DataFieldMeta.class,
+                  loadLiteral(dataField.attributeRules()), loadLiteral(dataField.defaultStrategy()));
+        }
 
-    final Map<String, MetaClass> dataFieldTypes = DataFieldCodeDecorator.aggregateDataFieldTypeMap(ctx, ctx.getEnclosingType());
-    dataFieldTypes.put("this", ctx.getEnclosingType());
+        return loadVariable(dataFieldMetasVarName).invoke("put", fieldName, dataFieldMetaInstance);
+       })
+      .collect(Collectors.toCollection(() -> stmts));
 
-    final MetaClass declaringClass = ctx.getEnclosingType();
+    return stmts;
+  }
+
+  private void generateEventHandlerMethodClasses(final Decorable decorable, final FactoryController controller,
+          final List<Statement> initStmts, final String dataFieldElementsVarName, final Statement fieldsMap) {
+
+    final Statement instance = Refs.get("instance");
+    final Map<String, MetaClass> dataFieldTypes = DataFieldCodeDecorator.aggregateDataFieldTypeMap(decorable, decorable.getDecorableDeclaringType());
+    dataFieldTypes.put("this", decorable.getDecorableDeclaringType());
+
+    final MetaClass declaringClass = decorable.getDecorableDeclaringType();
 
     /* Ensure that no @DataFields are handled more than once when used in combination with @SyncNative */
-    final Set<String> processedNativeHandlers = new HashSet<String>();
-    final Set<String> processedEventHandlers = new HashSet<String>();
+    final Set<String> processedNativeHandlers = new HashSet<>();
+    final Set<String> processedEventHandlers = new HashSet<>();
 
     for (final MetaMethod method : declaringClass.getMethodsAnnotatedWith(EventHandler.class)) {
 
       final String[] targetDataFieldNames = method.getAnnotation(EventHandler.class).value();
 
-      if (targetDataFieldNames.length == 0) {
-        throw new GenerationException("@EventHandler annotation on method ["
-            + declaringClass.getFullyQualifiedName()
-            + "." + method.getName() + "] must specify at least one data-field target.");
-      }
-
-      final MetaClass eventType = (method.getParameters().length == 1) ? method.getParameters()[0].getType() : null;
-      if (eventType == null || (!eventType.isAssignableTo(Event.class)) && !eventType.isAssignableTo(DomEvent.class)) {
-        throw new GenerationException("@EventHandler method [" + method.getName() + "] in class ["
-            + declaringClass.getFullyQualifiedName()
-            + "] must have exactly one parameter of a type extending either ["
-            + DomEvent.class.getName() + "] or [" + NativeEvent.class.getName() + "].");
-      }
+      validateNonEmptyEventHandlerTargets(declaringClass, method, targetDataFieldNames);
+      final MetaClass eventType = assertEventType(declaringClass, method);
 
       if (eventType.isAssignableTo(Event.class)) {
-        /*
-         * Generate native DOM event handlers.
-         */
-        final MetaClass handlerType = MetaClassFactory.get(EventListener.class);
-        final BlockBuilder<AnonymousClassStructureBuilder> listenerBuiler = ObjectBuilder.newInstanceOf(handlerType)
-            .extend()
-            .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
-        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(ctx.getInjectionContext(), component,
-            method, Stmt.loadVariable("event")));
+        processGwtDomEvent(controller, initStmts, dataFieldElementsVarName, fieldsMap, instance, dataFieldTypes, declaringClass,
+                processedNativeHandlers, processedEventHandlers, method, targetDataFieldNames, eventType);
+      }
+      else if (eventType.isAssignableTo(com.google.web.bindery.event.shared.Event.class)) {
+        processGwtWidgetEvent(controller, initStmts, fieldsMap, dataFieldTypes, declaringClass, processedNativeHandlers,
+                processedEventHandlers, method, targetDataFieldNames, eventType);
+      }
+      else {
+        processJsInteropDomEvent(initStmts, dataFieldElementsVarName, fieldsMap, instance, dataFieldTypes, declaringClass, method,
+                targetDataFieldNames, eventType);
+      }
+    }
+  }
 
-        final ObjectBuilder listenerInstance = listenerBuiler.finish().finish();
+  private void processJsInteropDomEvent(final List<Statement> initStmts, final String dataFieldElementsVarName,
+          final Statement fieldsMap, final Statement instance, final Map<String, MetaClass> dataFieldTypes,
+          final MetaClass declaringClass, final MetaMethod method, final String[] targetDataFieldNames,
+          final MetaClass eventType) {
+    final String[] browserEventTypes = Optional
+      .ofNullable(method.getParameters()[0].getAnnotation(ForEvent.class))
+      .map(anno -> anno.value())
+      .filter(value -> value.length > 0)
+      .orElseGet(() -> eventType.getAnnotation(BrowserEvent.class).value());
 
-        int eventsToSink =
-            Event.FOCUSEVENTS | Event.GESTUREEVENTS | Event.KEYEVENTS | Event.MOUSEEVENTS | Event.TOUCHEVENTS;
-        if (method.isAnnotationPresent(SinkNative.class)) {
-          eventsToSink = method.getAnnotation(SinkNative.class).value();
+    for (final String dataFieldName : targetDataFieldNames) {
+      final ObjectBuilder listener = ObjectBuilder
+        .newInstanceOf(org.jboss.errai.common.client.dom.EventListener.class)
+        .extend()
+        .publicOverridesMethod("call", Parameter.of(org.jboss.errai.common.client.dom.Event.class, "event"))
+          .append(load(instance).invoke(method, castTo(eventType, loadVariable("event"))))
+          .finish()
+        .finish();
+      final ContextualStatementBuilder elementStmt;
+      if (dataFieldTypes.containsKey(dataFieldName)) {
+        final MetaClass fieldType = dataFieldTypes.get(dataFieldName);
+        if (fieldType.isAssignableTo(Widget.class)) {
+          elementStmt = castTo(Widget.class, nestedCall(fieldsMap).invoke("get", dataFieldName));
         }
-
-        for (final String name : targetDataFieldNames) {
-
-          if (processedNativeHandlers.contains(name) || processedEventHandlers.contains(name)) {
-            throw new GenerationException(
-                "Cannot specify more than one @EventHandler method when @SyncNative is used for data-field ["
-                    + name + "] in class ["
-                    + declaringClass.getFullyQualifiedName()
-                    + "].");
-          }
-          else {
-            processedNativeHandlers.add(name);
-          }
-
-          if (dataFieldTypes.containsKey(name)) {
-            final MetaClass dataFieldType = dataFieldTypes.get(name);
-            if (!dataFieldType.isAssignableTo(Element.class)) {
-              /*
-               * We have a GWT or other Widget type.
-               */
-              throw new GenerationException("@DataField [" + name + "] of type [" + dataFieldType.getName()
-                  + "] in class [" + declaringClass.getFullyQualifiedName() + "] is not assignable to ["
-                  + Element.class.getName() + "] specified by @EventHandler method " + method.getName()
-                  + "("
-                  + eventType.getName() + ")]");
-            }
-            else {
-              /*
-               * We have a wrapped native Element reference
-               */
-              throw new GenerationException("Cannot attach native DOM events to @DataField [" + name
-                  + "] of type ["
-                  + dataFieldType.getName() + "] in class [" + declaringClass.getFullyQualifiedName()
-                  + "] specified by @EventHandler method " + method.getName() + "(" + eventType.getName()
-                  + ")] - Use the corresponding GWT 'EventHandler' types instead.");
-            }
-          }
-          else {
-            /*
-             * We are completely native and have no reference to this data-field
-             * Element in Java
-             */
-            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupNativeEventListener", component,
-                Stmt.loadVariable(dataFieldElementsVarName).invoke("get", name), listenerInstance,
-                eventsToSink));
-          }
+        else {
+          elementStmt = nestedCall(fieldsMap).invoke("get", dataFieldName);
         }
       }
       else {
-        /*
-         * We have a GWT Widget type
-         */
-        final MetaClass handlerType;
-        try {
-          handlerType = getHandlerForEvent(eventType);
-        }
-        catch (GenerationException e) {
-          /*
-           *  see ERRAI-373 for details on this crazy inference (without this message, the cause of the
-           *  problem is nearly impossible to diagnose)
-           */
-          if (declaringClass.getClass() == JavaReflectionClass.class) {
-            throw new GenerationException(
-                "The type " + declaringClass.getFullyQualifiedName() + " looks like a client-side" +
-                    " @Templated class, but it is not known to GWT. This probably means that " +
-                    declaringClass.getName() + " or one of its supertypes contains non-translatable code." +
-                    " Run the GWT compiler with logLevel=DEBUG to pinpoint the problem.", e);
-          }
-          throw e;
-        }
+        elementStmt = loadVariable(dataFieldElementsVarName).invoke("get", dataFieldName);
+      }
+      final String listenerVarName = "listenerFor" + eventType.getName() + "Calling" + capitalize(method.getName());
+      initStmts.add(declareFinalVariable(listenerVarName, org.jboss.errai.common.client.dom.EventListener.class, listener));
+      for (final String browserEventType : browserEventTypes) {
+        initStmts.add(invokeStatic(TemplateUtil.class, "setupBrowserEventListener", instance, elementStmt,
+                loadVariable(listenerVarName), loadLiteral(browserEventType)));
+      }
+    }
+  }
 
-        final BlockBuilder<AnonymousClassStructureBuilder> listenerBuiler = ObjectBuilder.newInstanceOf(handlerType)
-            .extend()
-            .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
+  private void processGwtWidgetEvent(final FactoryController controller, final List<Statement> initStmts, final Statement fieldsMap,
+          final Map<String, MetaClass> dataFieldTypes, final MetaClass declaringClass,
+          final Set<String> processedNativeHandlers, final Set<String> processedEventHandlers, final MetaMethod method,
+          final String[] targetDataFieldNames, final MetaClass eventType) {
+    /*
+     * We have a GWT Widget type
+     */
+    final MetaClass handlerType = getGwtHandlerType(declaringClass, eventType);
+
+    final BlockBuilder<AnonymousClassStructureBuilder> listenerBuiler = ObjectBuilder.newInstanceOf(handlerType)
+        .extend()
+        .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
 
 
-        listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(ctx.getInjectionContext(),
-            component, method, Stmt.loadVariable("event")));
+    listenerBuiler.append(InjectUtil.invokePublicOrPrivateMethod(controller, method, Stmt.loadVariable("event")));
 
-        final ObjectBuilder listenerInstance = listenerBuiler.finish().finish();
+    final ObjectBuilder listenerInstance = listenerBuiler.finish().finish();
 
-        final MetaClass hasHandlerType = MetaClassFactory.get("com.google.gwt.event.dom.client.Has"
-            + handlerType.getName()
-            + "s");
+    final MetaClass hasHandlerType = MetaClassFactory.get("com.google.gwt.event.dom.client.Has"
+        + handlerType.getName()
+        + "s");
 
-        for (final String name : targetDataFieldNames) {
-          final MetaClass dataFieldType = dataFieldTypes.get(name);
+    for (final String name : targetDataFieldNames) {
+      final MetaClass dataFieldType = dataFieldTypes.get(name);
 
-          if (dataFieldType == null) {
-            throw new GenerationException("@EventHandler method [" + method.getName() + "] in class ["
+      if (dataFieldType == null) {
+        throw new GenerationException("@EventHandler method [" + method.getName() + "] in class ["
+            + declaringClass.getFullyQualifiedName()
+            + "] handles a GWT event type but the specified @DataField [" + name + "] was not found.");
+      }
+
+      if (processedNativeHandlers.contains(name)) {
+        throw new GenerationException(
+            "Cannot specify more than one @EventHandler method when @SinkNative is used for data-field ["
+                + name + "] in class [" + declaringClass.getFullyQualifiedName()
+                + "].");
+      }
+
+      processedEventHandlers.add(name);
+
+      // Where will the event come from? It could be a @DataField member, or it could be the templated widget itself!
+      final Statement eventSource;
+      if ("this".equals(name)) {
+        eventSource = Stmt.loadVariable("instance");
+      }
+      else {
+        eventSource = Stmt.nestedCall(fieldsMap).invoke("get", name);
+      }
+
+      if (dataFieldType.isAssignableTo(Element.class)) {
+        initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler",
+            eventSource, listenerInstance,
+            Stmt.invokeStatic(eventType, "getType")));
+      }
+      else if (dataFieldType.isAssignableTo(hasHandlerType)) {
+        final Statement widget = Cast.to(hasHandlerType, eventSource);
+        initStmts.add(Stmt.nestedCall(widget).invoke("add" + handlerType.getName(),
+            Cast.to(handlerType, listenerInstance)));
+      }
+      else if (dataFieldType.isAssignableTo(Widget.class)) {
+        final Statement widget = Cast.to(Widget.class, eventSource);
+        initStmts.add(Stmt.nestedCall(widget).invoke("addDomHandler",
+            listenerInstance, Stmt.invokeStatic(eventType, "getType")));
+      } else if (RebindUtil.isNativeJsType(dataFieldType) || RebindUtil.isElementalIface(dataFieldType)) {
+        initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler",
+            eventSource, listenerInstance,
+            Stmt.invokeStatic(eventType, "getType")));
+      } else if (dataFieldType.isAnnotationPresent(Templated.class)) {
+        final ContextualStatementBuilder widget = Stmt.invokeStatic(TemplateWidgetMapper.class, "get", eventSource);
+        initStmts.add(widget.invoke("addDomHandler",
+            listenerInstance, Stmt.invokeStatic(eventType, "getType")));
+      } else {
+        throw new GenerationException("@DataField [" + name + "] of type [" + dataFieldType.getName()
+            + "] in class [" + declaringClass.getFullyQualifiedName()
+            + "] must implement the interface [" + hasHandlerType.getName()
+            + "] specified by @EventHandler method " + method.getName() + "(" + eventType.getName()
+            + ")], be a DOM element (wrapped as either a JavaScriptObject or a native @JsType), "
+            + "or be a @Templated bean.");
+      }
+    }
+  }
+
+  private MetaClass getGwtHandlerType(final MetaClass declaringClass, final MetaClass eventType) {
+    try {
+      return getHandlerForEvent(eventType);
+    }
+    catch (final GenerationException e) {
+      /*
+       *  see ERRAI-373 for details on this crazy inference (without this message, the cause of the
+       *  problem is nearly impossible to diagnose)
+       */
+      if (declaringClass.getClass() == JavaReflectionClass.class) {
+        throw new GenerationException(
+            "The type " + declaringClass.getFullyQualifiedName() + " looks like a client-side" +
+                " @Templated class, but it is not known to GWT. This probably means that " +
+                declaringClass.getName() + " or one of its supertypes contains non-translatable code." +
+                " Run the GWT compiler with logLevel=DEBUG to pinpoint the problem.", e);
+      }
+      throw e;
+    }
+  }
+
+  private void processGwtDomEvent(final FactoryController controller, final List<Statement> initStmts,
+          final String dataFieldElementsVarName, final Statement fieldsMap, final Statement instance,
+          final Map<String, MetaClass> dataFieldTypes, final MetaClass declaringClass,
+          final Set<String> processedNativeHandlers, final Set<String> processedEventHandlers, final MetaMethod method,
+          final String[] targetDataFieldNames, final MetaClass eventType) {
+    /*
+     * Generate native DOM event handlers.
+     */
+    final MetaClass handlerType = MetaClassFactory.get(EventListener.class);
+    final BlockBuilder<AnonymousClassStructureBuilder> listenerBuilder = ObjectBuilder.newInstanceOf(handlerType)
+        .extend()
+        .publicOverridesMethod(handlerType.getMethods()[0].getName(), Parameter.of(eventType, "event"));
+    listenerBuilder.append(InjectUtil.invokePublicOrPrivateMethod(controller, method, Stmt.loadVariable("event")));
+
+    final ObjectBuilder listenerInstance = listenerBuilder.finish().finish();
+
+    int eventsToSink =
+        Event.FOCUSEVENTS | Event.GESTUREEVENTS | Event.KEYEVENTS | Event.MOUSEEVENTS | Event.TOUCHEVENTS;
+    if (method.isAnnotationPresent(SinkNative.class)) {
+      eventsToSink = method.getAnnotation(SinkNative.class).value();
+    }
+
+    for (final String name : targetDataFieldNames) {
+
+      if (processedNativeHandlers.contains(name) || processedEventHandlers.contains(name)) {
+        throw new GenerationException(
+            "Cannot specify more than one @EventHandler method when @SyncNative is used for data-field ["
+                + name + "] in class ["
                 + declaringClass.getFullyQualifiedName()
-                + "] handles a GWT event type but the specified @DataField [" + name + "] was not found.");
-          }
-
-          if (processedNativeHandlers.contains(name)) {
-            throw new GenerationException(
-                "Cannot specify more than one @EventHandler method when @SinkNative is used for data-field ["
-                    + name + "] in class [" + declaringClass.getFullyQualifiedName()
-                    + "].");
-          }
-
-          processedEventHandlers.add(name);
-
-          // Where will the event come from? It could be a @DataField member, or it could be the templated widget itself!
-          final Statement eventSource;
-          if ("this".equals(name)) {
-            eventSource = Stmt.loadVariable("obj");
+                + "].");
+      }
+      else {
+        processedNativeHandlers.add(name);
+      }
+      final ContextualStatementBuilder elementStmt;
+      if (dataFieldTypes.containsKey(name)) {
+        final MetaClass dataFieldType = dataFieldTypes.get(name);
+        final boolean gwtUserElement = dataFieldType.isAssignableTo(Element.class);
+        final boolean nativeJsType = RebindUtil.isNativeJsType(dataFieldType);
+        if (gwtUserElement || nativeJsType) {
+          if (dataFieldType.isAssignableTo(HasValue.class)) {
+            final MetaClass valueType = dataFieldType.getMethod("getValue", new Class[0]).getReturnType();
+            elementStmt = Stmt.castTo(ElementWrapperWidget.class, Stmt.nestedCall(fieldsMap).invoke("get", name, loadLiteral(valueType)));
           }
           else {
-            eventSource = Stmt.nestedCall(fieldsMap).invoke("get", name);
+            elementStmt = Stmt.castTo(ElementWrapperWidget.class, Stmt.nestedCall(fieldsMap).invoke("get", name));
+          }
+        } else {
+          /*
+           * We have a GWT or other Widget type.
+           */
+          throw new GenerationException("@DataField [" + name + "] of type [" + dataFieldType.getName()
+              + "] in class [" + declaringClass.getFullyQualifiedName() + "] is not assignable to ["
+              + Element.class.getName() + "] specified by @EventHandler method " + method.getName()
+              + "("
+              + eventType.getName() + ")]\n");
+        }
+      } else {
+        elementStmt = Stmt.loadVariable(dataFieldElementsVarName).invoke("get", name);
+      }
+
+      initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupNativeEventListener", instance,
+          elementStmt, listenerInstance,
+          eventsToSink));
+    }
+  }
+
+  private void validateNonEmptyEventHandlerTargets(final MetaClass declaringClass, final MetaMethod method, final String[] targetDataFieldNames) {
+    if (targetDataFieldNames.length == 0) {
+      throw new GenerationException("@EventHandler annotation on method ["
+          + declaringClass.getFullyQualifiedName()
+          + "." + method.getName() + "] must specify at least one data-field target.");
+    }
+  }
+
+  private MetaClass assertEventType(final MetaClass declaringClass, final MetaMethod method) {
+    final MetaClass eventType = (method.getParameters().length == 1) ? method.getParameters()[0].getType() : null;
+    if (eventType != null) {
+      if (eventType.isAssignableTo(Event.class) || eventType.isAssignableTo(DomEvent.class)) {
+        return eventType;
+      }
+      else if (eventType.isAnnotationPresent(BrowserEvent.class) && Optional
+              .ofNullable(eventType.getAnnotation(JsType.class)).filter(anno -> anno.isNative()).isPresent()) {
+        final BrowserEvent eventTypeAnno = eventType.getAnnotation(BrowserEvent.class);
+        final boolean eventTypeMatchesAll = eventTypeAnno.value().length == 0;
+        final Optional<ForEvent> oParamAnno = Optional.ofNullable(method.getParameters()[0].getAnnotation(ForEvent.class)).filter(anno -> anno.value().length > 0);
+        final boolean parameterDeclaresEvent = oParamAnno.isPresent();
+
+        if (eventTypeMatchesAll && parameterDeclaresEvent
+                || !eventTypeMatchesAll && (!parameterDeclaresEvent || Arrays.asList(eventTypeAnno.value()).containsAll(Arrays.asList(oParamAnno.get().value())))) {
+          return eventType;
+        }
+        else {
+          String message = String.format("@EventHandler parameter [%s] of method [%s] in class [%s] must declare an event type with @%s",
+                  method.getParameters()[0].getName(), method.getName(), declaringClass.getFullyQualifiedName(), ForEvent.class.getSimpleName());
+          if (!eventTypeMatchesAll) {
+            message += " and must be a subset of the following event types: " + Arrays.toString(eventTypeAnno.value());
           }
 
-          if (dataFieldType.isAssignableTo(Element.class)) {
-            initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "setupWrappedElementEventHandler", component,
-                eventSource, listenerInstance,
-                Stmt.invokeStatic(eventType, "getType")));
-          }
-          else if (dataFieldType.isAssignableTo(hasHandlerType)) {
-            final Statement widget = Cast.to(hasHandlerType, eventSource);
-            initStmts.add(Stmt.nestedCall(widget).invoke("add" + handlerType.getName(),
-                Cast.to(handlerType, listenerInstance)));
-          }
-          else if (dataFieldType.isAssignableTo(Widget.class)) {
-            final Statement widget = Cast.to(Widget.class, eventSource);
-            initStmts.add(Stmt.nestedCall(widget).invoke("addDomHandler",
-                listenerInstance, Stmt.invokeStatic(eventType, "getType")));
-          }
-          else {
-            throw new GenerationException("@DataField [" + name + "] of type [" + dataFieldType.getName()
-                + "] in class [" + declaringClass.getFullyQualifiedName()
-                + "] does not implement required interface [" + hasHandlerType.getName()
-                + "] specified by @EventHandler method " + method.getName() + "(" + eventType.getName()
-                + ")]");
-          }
+          throw new GenerationException(message);
         }
       }
     }
+    throw new GenerationException(String.format(
+            "@EventHandler method [%s] in class [%s] must have exactly one parameter of a type "
+            + "annotated with @%s and @JsType(isNative=true) or extending either [%s] or [%s].",
+            method.getName(), declaringClass.getFullyQualifiedName(), BrowserEvent.class.getSimpleName(),
+            DomEvent.class.getName(), NativeEvent.class.getName()));
   }
 
   private MetaClass getHandlerForEvent(final MetaClass eventType) {
@@ -538,37 +691,40 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
   /**
    * Translates the template using the module's i18n message bundle (only if
    * i18n is enabled for the module).
-   * @param ctx
+   * @param decorable
    * @param initStmts
    * @param rootTemplateElement
    */
-  private void translateTemplate(InjectableInstance<Templated> ctx, List<Statement> initStmts,
-          Statement rootTemplateElement) {
+  private void translateTemplate(final Decorable decorable, final List<Statement> initStmts,
+          final Statement rootTemplateElement) {
     initStmts.add(
             Stmt.invokeStatic(
                     TemplateUtil.class,
                     "translateTemplate",
-                    getTemplateFileName(ctx.getEnclosingType()),
+                    getTemplateFileName(decorable.getDecorableDeclaringType()),
                     rootTemplateElement
                     ));
   }
 
-  private void generateComponentCompositions(final InjectableInstance<Templated> ctx,
+  private void generateComponentCompositions(final Decorable decorable,
                                              final List<Statement> initStmts,
                                              final Statement component,
                                              final Statement rootTemplateElement,
                                              final Statement dataFieldElements,
-                                             final Statement fieldsMap) {
+                                             final Statement fieldsMap,
+                                             final Statement fieldsMetaMap) {
+
+    final boolean composite = decorable.getEnclosingInjectable().getInjectedType().isAssignableTo(Composite.class);
 
     /*
      * Merge each field's Widget Element into the DOM in place of the
      * corresponding data-field
      */
-    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(ctx, ctx.getEnclosingType());
+    final Map<String, Statement> dataFields = DataFieldCodeDecorator.aggregateDataFieldMap(decorable, decorable.getEnclosingInjectable().getInjectedType());
     for (final Entry<String, Statement> field : dataFields.entrySet()) {
-      initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "compositeComponentReplace", ctx.getEnclosingType()
-          .getFullyQualifiedName(), getTemplateFileName(ctx.getEnclosingType()), Cast.to(Widget.class, field.getValue()),
-          dataFieldElements, field.getKey()));
+      initStmts.add(invokeStatic(TemplateUtil.class, "compositeComponentReplace", decorable.getDecorableDeclaringType()
+          .getFullyQualifiedName(), getTemplateFileName(decorable.getDecorableDeclaringType()), supplierOf(Cast.to(Widget.class, field.getValue())),
+          dataFieldElements, fieldsMetaMap, field.getKey()));
     }
 
     /*
@@ -579,53 +735,116 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
       initStmts.add(Stmt.nestedCall(fieldsMap).invoke("put", field.getKey(), field.getValue()));
     }
 
-    /*
-     * Attach the Template to the Component, and set up the GWT Widget hierarchy
-     * to preserve Handlers and DOM events.
-     */
-    initStmts.add(Stmt.invokeStatic(TemplateUtil.class, "initWidget", component, rootTemplateElement,
-        Stmt.nestedCall(fieldsMap).invoke("values")));
+    final String initMethodName;
+    if (composite) {
+      /*
+       * Attach the Template to the Component, and set up the GWT Widget hierarchy
+       * to preserve Handlers and DOM events.
+       */
+      initMethodName = "initWidget";
+    } else {
+      initMethodName = "initTemplated";
+    }
+    initStmts.add(Stmt.invokeStatic(TemplateUtil.class, initMethodName, component, rootTemplateElement,
+            Stmt.nestedCall(fieldsMap).invoke("values")));
 
   }
 
+  private static Statement supplierOf(final Statement value) {
+    return newInstanceOf(parameterizedAs(Supplier.class, typeParametersOf(value.getType())))
+            .extend()
+            .publicOverridesMethod("get")
+            .append(Stmt.nestedCall(value).returnValue())
+            .finish()
+            .finish();
+  }
+
   /**
-   * Create an inner interface for the given {@link Template} class and its HTML corresponding resource
+   * Possibly create an inner interface {@link ClientBundle} for the template's HTML or CSS resources.
+   * @param customProvider
+   * @param styleSheet
    */
-  private void generateTemplateResourceInterface(final InjectableInstance<Templated> ctx, final MetaClass type) {
-    final ClassStructureBuilder<?> componentTemplateResource = ClassBuilder.define(getTemplateTypeName(type)).publicScope()
-        .interfaceDefinition().implementsInterface(Template.class).implementsInterface(ClientBundle.class)
-        .body()
-        .publicMethod(TextResource.class, "getContents").annotatedWith(new Source() {
+  private void generateTemplateResourceInterface(final Decorable decorable, final MetaClass type, final boolean customProvider, final boolean styleSheet) {
+    final ClassDefinitionBuilderInterfaces<ClassStructureBuilderAbstractMethodOption> ifaceDef = ClassBuilder
+            .define(getTemplateTypeName(type)).publicScope().interfaceDefinition();
+    if (!customProvider) {
+      ifaceDef.implementsInterface(Template.class);
+    }
+    if (styleSheet) {
+      ifaceDef.implementsInterface(TemplateStyleSheet.class);
+    }
 
-          @Override
-          public Class<? extends Annotation> annotationType() {
-            return Source.class;
-          }
+    final ClassStructureBuilder<ClassStructureBuilderAbstractMethodOption> componentTemplateResource = ifaceDef
+            .implementsInterface(ClientBundle.class).body();
 
-          @Override
-          public String[] value() {
-            return new String[]{getTemplateFileName(type)};
-          }
+    if (!customProvider) {
+      componentTemplateResource.publicMethod(TextResource.class, "getContents").annotatedWith(new Source() {
 
-        }).finish();
+        @Override
+        public Class<? extends Annotation> annotationType() {
+          return Source.class;
+        }
 
-    ctx.getInjectionContext().getProcessingContext().getBootstrapClass()
-        .addInnerClass(new InnerClass(componentTemplateResource.getClassDefinition()));
+        @Override
+        public String[] value() {
+          return new String[] { getTemplateFileName(type) };
+        }
 
-    getConstructedTemplateTypes(ctx).put(type, componentTemplateResource.getClassDefinition());
+      }).finish();
+    }
+
+    if (styleSheet) {
+      componentTemplateResource.publicMethod(CssResource.class, "getStyle").annotatedWith(new Source() {
+
+        @Override
+        public Class<? extends Annotation> annotationType() {
+          return Source.class;
+        }
+
+        @Override
+        public String[] value() {
+          return new String[] { getTemplateStyleSheetPath(type) };
+        }
+
+      }, new CssResource.NotStrict() {
+
+        @Override
+        public Class<? extends Annotation> annotationType() {
+          return CssResource.NotStrict.class;
+        }
+
+      }).finish();
+    }
+
+    decorable.getFactoryMetaClass().addInnerClass(new InnerClass(componentTemplateResource.getClassDefinition()));
+
+    getConstructedTemplateTypes(decorable).put(type, componentTemplateResource.getClassDefinition());
+  }
+
+  public static String getTemplateStyleSheetPath(final MetaClass type) {
+    final Templated anno = type.getAnnotation(Templated.class);
+    final boolean defaultPath = "".equals(anno.stylesheet());
+    final String rawPath = (defaultPath ? type.getName() + ".css" : anno.stylesheet());
+    final boolean absolute = rawPath.startsWith("/");
+
+    if (absolute) {
+      return rawPath.substring(1);
+    } else {
+      return type.getPackageName().replace('.', '/') + "/" + rawPath;
+    }
   }
 
   /**
    * Get a map of all previously constructed {@link Template} object types
    */
   @SuppressWarnings("unchecked")
-  private Map<MetaClass, BuildMetaClass> getConstructedTemplateTypes(final InjectableInstance<Templated> ctx) {
-    Map<MetaClass, BuildMetaClass> result = (Map<MetaClass, BuildMetaClass>) ctx.getInjectionContext().getAttribute(
+  private Map<MetaClass, BuildMetaClass> getConstructedTemplateTypes(final Decorable decorable) {
+    Map<MetaClass, BuildMetaClass> result = (Map<MetaClass, BuildMetaClass>) decorable.getInjectionContext().getAttribute(
         CONSTRUCTED_TEMPLATE_SET_KEY);
 
     if (result == null) {
-      result = new LinkedHashMap<MetaClass, BuildMetaClass>();
-      ctx.getInjectionContext().setAttribute(CONSTRUCTED_TEMPLATE_SET_KEY, result);
+      result = new LinkedHashMap<>();
+      decorable.getInjectionContext().setAttribute(CONSTRUCTED_TEMPLATE_SET_KEY, result);
     }
 
     return result;
@@ -639,7 +858,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
    * Get the name of the {@link Template} class of the given {@link MetaClass} type
    */
   private String getTemplateTypeName(final MetaClass type) {
-    return type.getFullyQualifiedName().replace('.', '_').replace('$', '_') + "TemplateResource";
+    return qualifiedClassNameToShortenedIdentifier(type) + "TemplateResource";
   }
 
   /**
@@ -666,7 +885,7 @@ public class TemplatedCodeDecorator extends IOCDecoratorExtension<Templated> {
 
     return resource;
   }
-  
+
   /**
    * Get the URL of the server-side {@link Template} HTML file of the given {@link MetaClass} component type
    */

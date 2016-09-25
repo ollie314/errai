@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,13 @@
 
 package org.jboss.errai.marshalling.rebind.api.model.impl;
 
+import java.lang.reflect.Method;
+
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassMember;
 import org.jboss.errai.codegen.meta.MetaMethod;
 import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
 import org.jboss.errai.marshalling.rebind.api.model.MemberMapping;
-
-import java.lang.reflect.Method;
 
 /**
  * @author Mike Brock
@@ -30,7 +30,7 @@ import java.lang.reflect.Method;
 public class ReadMapping extends SimpleMapping implements MemberMapping {
   private MetaClass toMap;
   private MetaClassMember readingMember;
-  private String getterMethod;
+  private final String getterMethod;
 
   public ReadMapping(final String key, final Class<?> type, final String getterMethod) {
     this(key, JavaReflectionClass.newUncachedInstance(type), getterMethod);
@@ -58,7 +58,6 @@ public class ReadMapping extends SimpleMapping implements MemberMapping {
     }
 
     final MetaMethod meth = toMap.getMethod(getterMethod, new MetaClass[0]);
-
 
     final Method method = meth.asMethod();
     if (method != null) {

@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 JBoss, by Red Hat, Inc
+ * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,167 +16,189 @@
 
 package org.jboss.errai.databinding.rebind;
 
-import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
-import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.declareVariable;
+import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
+import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
+import static org.jboss.errai.codegen.util.Stmt.loadVariable;
+import static org.jboss.errai.codegen.util.Stmt.nestedCall;
+import static org.jboss.errai.codegen.util.Stmt.throw_;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.inject.Inject;
 
-import org.jboss.errai.codegen.Parameter;
 import org.jboss.errai.codegen.Statement;
-import org.jboss.errai.codegen.builder.AnonymousClassStructureBuilder;
-import org.jboss.errai.codegen.builder.BlockBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.exception.GenerationException;
 import org.jboss.errai.codegen.meta.MetaClass;
+import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.util.If;
 import org.jboss.errai.codegen.util.PrivateAccessUtil;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
+import org.jboss.errai.common.client.api.IsElement;
 import org.jboss.errai.common.client.ui.ElementWrapperWidget;
+import org.jboss.errai.common.client.ui.HasValue;
+import org.jboss.errai.databinding.client.BoundUtil;
+import org.jboss.errai.databinding.client.api.Convert;
 import org.jboss.errai.databinding.client.api.DataBinder;
+import org.jboss.errai.databinding.client.api.handler.list.BindableListChangeHandler;
 import org.jboss.errai.ioc.client.api.CodeDecorator;
-import org.jboss.errai.ioc.client.container.DestructionCallback;
 import org.jboss.errai.ioc.client.container.InitializationCallback;
 import org.jboss.errai.ioc.rebind.ioc.extension.IOCDecoratorExtension;
-import org.jboss.errai.ioc.rebind.ioc.injector.InjectUtil;
-import org.jboss.errai.ioc.rebind.ioc.injector.api.InjectableInstance;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.Decorable.DecorableType;
+import org.jboss.errai.ioc.rebind.ioc.injector.api.FactoryController;
 import org.jboss.errai.ui.shared.api.annotations.Bound;
 
 import com.google.gwt.dom.client.Element;
+import com.google.gwt.user.client.TakesValue;
 import com.google.gwt.user.client.ui.Widget;
+
+import jsinterop.annotations.JsType;
 
 /**
  * Generates an {@link InitializationCallback} that contains automatic binding logic.
- * 
+ *
  * @author Christian Sadilek <csadilek@redhat.com>
  */
-@CodeDecorator
+// Must run after TemplatedCodeDecorator
+@CodeDecorator(order=2)
 public class BoundDecorator extends IOCDecoratorExtension<Bound> {
 
-  final Map<MetaClass, BlockBuilder<AnonymousClassStructureBuilder>> initBlockCache =
-      new ConcurrentHashMap<MetaClass, BlockBuilder<AnonymousClassStructureBuilder>>();
+  final Set<MetaClass> processedTypes = Collections.newSetFromMap(new ConcurrentHashMap<MetaClass, Boolean>());
 
   public BoundDecorator(Class<Bound> decoratesWith) {
     super(decoratesWith);
   }
 
   @Override
-  public List<? extends Statement> generateDecorator(InjectableInstance<Bound> ctx) {
-    final MetaClass targetClass = ctx.getTargetInjector().getInjectedType();
+  public void generateDecorator(final Decorable decorable, final FactoryController controller) {
+    final MetaClass targetClass = decorable.getEnclosingInjectable().getInjectedType();
     final List<Statement> statements = new ArrayList<Statement>();
-    BlockBuilder<AnonymousClassStructureBuilder> initBlock = initBlockCache.get(targetClass);
+    final boolean hasRunForType =  processedTypes.contains(targetClass);
 
-    // Ensure private accessors are generated for bound widget fields
-    ctx.ensureMemberExposed();
-
-    final DataBindingUtil.DataBinderRef binderLookup = DataBindingUtil.lookupDataBinderRef(ctx);
+    final DataBindingUtil.DataBinderRef binderLookup = DataBindingUtil.lookupDataBinderRef(decorable, controller);
     if (binderLookup != null) {
       // Generate a reference to the bean's @AutoBound data binder
-      if (initBlock == null) {
-        statements.add(Stmt.declareVariable("binder", DataBinder.class, binderLookup.getValueAccessor()));
+      if (!hasRunForType) {
+        statements.add(declareVariable("binder", DataBinder.class, binderLookup.getValueAccessor()));
         statements.add(If.isNull(Refs.get("binder")).append(
-                Stmt.throw_(RuntimeException.class, "@AutoBound data binder for class "
-                    + ctx.getInjector().getInjectedType()
+                throw_(RuntimeException.class, "@AutoBound data binder for class "
+                    + targetClass
                     + " has not been initialized. Either initialize or add @Inject!")).finish());
+        statements.add(controller.setReferenceStmt(DataBindingUtil.BINDER_VAR_NAME, loadVariable("binder")));
       }
 
       // Check if the bound property exists in data model type
-      Bound bound = ctx.getAnnotation();
-      String property = bound.property().equals("") ? ctx.getMemberName() : bound.property();
+      final Bound bound = (Bound) decorable.getAnnotation();
+      final boolean propertyIsEmpty = bound.property().equals("");
+      String property = propertyIsEmpty ? decorable.getName() : bound.property();
       if (!DataBindingValidator.isValidPropertyChain(binderLookup.getDataModelType(), property)) {
-        throw new GenerationException("Invalid binding of field " + ctx.getMemberName()
-            + " in class " + ctx.getInjector().getInjectedType() + "! Property " + property
+        if (propertyIsEmpty && binderLookup.getDataModelType().equals(getValueType(decorable.getType()))) {
+          property = "this";
+        }
+        else {
+          throw new GenerationException("Invalid binding of field " + decorable.getName()
+            + " in class " + targetClass + "! Property " + property
             + " not resolvable from class " + binderLookup.getDataModelType()
             + "! Hint: Is " + binderLookup.getDataModelType() + " marked as @Bindable? When binding to a "
             + "property chain, all properties but the last in a chain must be of a @Bindable type!");
-      }
-
-      Statement widget = ctx.getValueStatement();
-      // Ensure the @Bound field or method provides a widget or DOM element
-      MetaClass widgetType = ctx.getElementTypeOrMethodReturnType();
-      if (widgetType.isAssignableTo(Widget.class)) {
-        // Ensure @Bound widget field is initialized
-        if (!ctx.isAnnotationPresent(Inject.class) && ctx.getField() != null && widgetType.isDefaultInstantiable()) {
-          Statement widgetInit = Stmt.invokeStatic(
-              ctx.getInjectionContext().getProcessingContext().getBootstrapClass(),
-              PrivateAccessUtil.getPrivateFieldInjectorName(ctx.getField()),
-              Refs.get(ctx.getInjector().getInstanceVarName()),
-              ObjectBuilder.newInstanceOf(widgetType));
-
-          statements.add(If.isNull(widget).append(widgetInit).finish());
         }
       }
-      else if (widgetType.isAssignableTo(Element.class)) {
-        widget = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", widget);
-      }
-      else {
-        throw new GenerationException("@Bound field or method " + ctx.getMemberName()
-            + " in class " + ctx.getInjector().getInjectedType()
-            + " must provide a widget or DOM element type but provides: "
-            + widgetType.getFullyQualifiedName());
-      }
 
+      Statement component = decorable.getAccessStatement();
+      controller.ensureMemberExposed(decorable.get());
+
+      // Ensure the @Bound field or method provides a widget or DOM element
+      MetaClass componentType = decorable.getType();
+      if (componentType.isAssignableTo(Widget.class)) {
+        // Ensure @Bound widget field is initialized
+        if (!decorable.get().isAnnotationPresent(Inject.class) && decorable.decorableType().equals(DecorableType.FIELD) && componentType.isDefaultInstantiable()) {
+          Statement widgetInit = Stmt.loadVariable("this").invoke(
+              PrivateAccessUtil.getPrivateFieldAccessorName(decorable.getAsField()),
+              Refs.get("instance"),
+              ObjectBuilder.newInstanceOf(componentType));
+
+          statements.add(If.isNull(component).append(widgetInit).finish());
+        }
+      }
+      else if (componentType.isAnnotationPresent(JsType.class)) {
+        if (componentType.isAssignableTo(HasValue.class)) {
+          final MetaClass valueType = componentType.getMethod("getValue", new Class[0]).getReturnType();
+          component = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget",
+                  Stmt.invokeStatic(BoundUtil.class, "asElement", component), Stmt.loadLiteral(valueType));
+        }
+        else {
+          component = Stmt.invokeStatic(ElementWrapperWidget.class, "getWidget", Stmt.invokeStatic(BoundUtil.class, "asElement", component));
+        }
+      }
+      else if (!(componentType.isAssignableTo(TakesValue.class)
+              || componentType.isAssignableTo(BindableListChangeHandler.class)
+              || componentType.isAssignableTo(Element.class)
+              || componentType.isAnnotationPresent(JsType.class)
+              || componentType.isAssignableTo(IsElement.class))) {
+        throw new GenerationException("@Bound field or method " + decorable.getName()
+            + " in class " + targetClass
+            + " must be assignable to Widget, TakesValue, or a DOM element type but provides: "
+            + componentType.getFullyQualifiedName());
+      }
 
       // Generate the binding
-      Statement conv = bound.converter().equals(Bound.NO_CONVERTER.class) ? null : Stmt.newObject(bound.converter());
+      Statement conv = coverterStatement(bound, decorable.getType(),
+              DataBindingValidator.getPropertyType(binderLookup.getDataModelType(), property));
       Statement onKeyUp = Stmt.load(bound.onKeyUp());
-      statements.add(Stmt.loadVariable("binder").invoke("bind", widget, property, conv, onKeyUp));
+      statements.add(Stmt.loadVariable("binder").invoke("bind", component, property, conv, loadLiteral(null), onKeyUp));
     }
     else {
       throw new GenerationException("No @Model or @AutoBound data binder found for @Bound field or method "
-          + ctx.getMemberName() + " in class " + ctx.getInjector().getInjectedType());
+          + decorable.getName() + " in class " + targetClass);
     }
 
-    // The first decorator to run will generate the initialization callback, the subsequent
-    // decorators (for other bound widgets of the same class) will just amend the block.
-    if (initBlock == null) {
-      initBlock = createInitCallback(ctx.getEnclosingType(), "obj");
-      initBlockCache.put(targetClass, initBlock);
+    processedTypes.add(targetClass);
 
-      ctx.getTargetInjector().setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());
-      ctx.getTargetInjector().addStatementToEndOfInjector(
-          Stmt.loadVariable("context").invoke("addInitializationCallback",
-                    Refs.get(ctx.getInjector().getInstanceVarName()),
-                    initBlock.appendAll(statements).finish().finish()));
+    controller.setAttribute(DataBindingUtil.BINDER_MODEL_TYPE_VALUE, binderLookup.getDataModelType());
+    controller.addInitializationStatements(statements);
+    if (!hasRunForType) {
+      controller.addDestructionStatements(Collections.<Statement> singletonList(
+              nestedCall(controller.getReferenceStmt(DataBindingUtil.BINDER_VAR_NAME, DataBinder.class)).invoke("unbind")));
+    }
+  }
 
-      ctx.getTargetInjector().addStatementToEndOfInjector(
-          Stmt.loadVariable("context").invoke("addDestructionCallback",
-                    Refs.get(ctx.getInjector().getInstanceVarName()),
-                    createDestructionCallback(ctx.getEnclosingType(), "obj", binderLookup.getValueAccessor())));
+  private MetaClass getValueType(final MetaClass type) {
+    if (type.isAssignableTo(TakesValue.class)) {
+      return type.getMethod("getValue", new Class[0]).getReturnType();
     }
     else {
-      initBlock.appendAll(statements);
+      return null;
     }
-
-    return Collections.emptyList();
   }
 
-  /**
-   * Generates an anonymous {@link InitializationCallback} that will contain the auto binding logic.
-   */
-  private BlockBuilder<AnonymousClassStructureBuilder> createInitCallback(final MetaClass type, final String initVar) {
-    BlockBuilder<AnonymousClassStructureBuilder> block =
-        Stmt.newObject(parameterizedAs(InitializationCallback.class, typeParametersOf(type)))
-            .extend()
-            .publicOverridesMethod("init", Parameter.of(type, initVar, true));
+  private Statement coverterStatement(final Bound bound, final MetaClass boundType, final MetaClass propertyType) {
+    if (bound.converter().equals(Bound.NO_CONVERTER.class)) {
+      final Optional<MetaClass> valueType;
+      if (boundType.isAssignableTo(TakesValue.class)) {
+        valueType = Optional.ofNullable(boundType.getMethod("getValue", new Class[0]).getReturnType());
+      }
+      else if (boundType.isAssignableTo(BindableListChangeHandler.class)) {
+        valueType = Optional.ofNullable(MetaClassFactory.get(List.class));
+      }
+      else {
+        valueType = Optional.empty();
+      }
 
-    return block;
+      return valueType
+              .map(type -> invokeStatic(Convert.class, "getConverter", loadLiteral(propertyType), loadLiteral(type)))
+              .orElse(loadLiteral(null));
+    }
+    else {
+      return Stmt.newObject(bound.converter());
+    }
   }
 
-  /**
-   * Generates an anonymous {@link DestructionCallback} that will unbind all widgets.
-   */
-  private Statement createDestructionCallback(final MetaClass type, final String initVar, final Statement binder) {
-    List<Statement> destructionStatements = 
-      Collections.singletonList((Statement) Stmt.nestedCall(binder).invoke("unbind"));
-
-    return InjectUtil.createDestructionCallback(type, initVar, destructionStatements);
-  }
-  
 }

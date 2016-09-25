@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,11 +21,14 @@ import java.util.List;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 
 import org.jboss.errai.common.client.api.interceptor.InterceptedCall;
 import org.jboss.errai.enterprise.jaxrs.client.shared.entity.User;
 import org.jboss.errai.enterprise.jaxrs.client.shared.interceptor.RestCallCustomTypeResultManipulatingInterceptor;
+
+import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
 /**
  * This service is used to test support for Jackson generated JSON.
@@ -60,6 +63,7 @@ public interface JacksonTestService {
    */
   @POST
   @Path("/1")
+  @Produces(APPLICATION_JSON)
   @InterceptedCall(RestCallCustomTypeResultManipulatingInterceptor.class)
   public User postJacksonIntercepted(String jackson);
 

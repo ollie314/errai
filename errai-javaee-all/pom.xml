@@ -4,7 +4,7 @@
    <parent>
       <artifactId>errai-parent</artifactId>
       <groupId>org.jboss.errai</groupId>
-      <version>3.2.1-SNAPSHOT</version>
+      <version>4.0.0-SNAPSHOT</version>
    </parent>
    <modelVersion>4.0.0</modelVersion>
 
@@ -59,7 +59,7 @@
       </dependency>
       <dependency>
          <groupId>org.jboss.errai</groupId>
-         <artifactId>errai-weld-integration</artifactId>
+         <artifactId>errai-cdi-server</artifactId>
       </dependency>
       <dependency>
          <groupId>org.jboss.errai</groupId>

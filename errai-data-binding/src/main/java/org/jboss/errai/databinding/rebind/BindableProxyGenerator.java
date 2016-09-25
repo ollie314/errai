@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,11 +18,15 @@ package org.jboss.errai.databinding.rebind;
 
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
+import static org.jboss.errai.codegen.util.Stmt.loadLiteral;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jboss.errai.codegen.BlockStatement;
@@ -37,6 +41,7 @@ import org.jboss.errai.codegen.builder.ClassStructureBuilder;
 import org.jboss.errai.codegen.builder.ContextualStatementBuilder;
 import org.jboss.errai.codegen.builder.ElseBlockBuilder;
 import org.jboss.errai.codegen.builder.impl.ClassBuilder;
+import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaClassFactory;
 import org.jboss.errai.codegen.meta.MetaMethod;
@@ -51,11 +56,12 @@ import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
 import org.jboss.errai.databinding.client.BindableProxy;
 import org.jboss.errai.databinding.client.BindableProxyAgent;
+import org.jboss.errai.databinding.client.BindableProxyFactory;
 import org.jboss.errai.databinding.client.HasProperties;
 import org.jboss.errai.databinding.client.NonExistingPropertyException;
 import org.jboss.errai.databinding.client.PropertyType;
 import org.jboss.errai.databinding.client.api.Bindable;
-import org.jboss.errai.databinding.client.api.InitialState;
+import org.jboss.errai.databinding.client.api.StateSync;
 
 import com.google.gwt.core.ext.TreeLogger;
 
@@ -63,7 +69,7 @@ import com.google.gwt.core.ext.TreeLogger;
  * Generates a proxy for a {@link Bindable} type. A bindable proxy subclasses the bindable type and
  * overrides all non-final methods to trigger UI updates and fire property change events when
  * required.
- * 
+ *
  * @author Christian Sadilek <csadilek@redhat.com>
  */
 public class BindableProxyGenerator {
@@ -80,8 +86,8 @@ public class BindableProxyGenerator {
   }
 
   public ClassStructureBuilder<?> generate() {
-    String safeProxyClassName = bindable.getFullyQualifiedName().replace('.', '_') + "Proxy";
-    ClassStructureBuilder<?> classBuilder = ClassBuilder.define(safeProxyClassName, bindable)
+    final String safeProxyClassName = bindable.getFullyQualifiedName().replace('.', '_') + "Proxy";
+    final ClassStructureBuilder<?> classBuilder = ClassBuilder.define(safeProxyClassName, bindable)
         .packageScope()
         .implementsInterface(BindableProxy.class)
         .body();
@@ -89,13 +95,13 @@ public class BindableProxyGenerator {
     classBuilder
         .privateField(agentField, parameterizedAs(BindableProxyAgent.class, typeParametersOf(bindable)))
         .finish()
-        .publicConstructor(Parameter.of(InitialState.class, "initialState"))
-        .callThis(Stmt.newObject(bindable), Variable.get("initialState"))
+        .publicConstructor()
+        .callThis(Stmt.newObject(bindable))
         .finish()
-        .publicConstructor(Parameter.of(bindable, "target"), Parameter.of(InitialState.class, "initialState"))
+        .publicConstructor(Parameter.of(bindable, "target"))
         .append(Stmt.loadVariable(agentField).assignValue(
             Stmt.newObject(parameterizedAs(BindableProxyAgent.class, typeParametersOf(bindable)),
-                Variable.get("this"), Variable.get("target"), Variable.get("initialState"))))
+                Variable.get("this"), Variable.get("target"))))
         .append(generatePropertiesMap())
         .append(agent().invoke("copyValues"))
         .finish()
@@ -137,21 +143,40 @@ public class BindableProxyGenerator {
    * method implementations of {@link HasProperties}.
    */
   private void generateAccessorMethods(ClassStructureBuilder<?> classBuilder) {
-    BlockBuilder<?> getMethod = classBuilder.publicMethod(Object.class, "get",
+    final BlockBuilder<?> getMethod = classBuilder.publicMethod(Object.class, "get",
         Parameter.of(String.class, "property"));
 
-    BlockBuilder<?> setMethod = classBuilder.publicMethod(void.class, "set",
+    final BlockBuilder<?> setMethod = classBuilder.publicMethod(void.class, "set",
             Parameter.of(String.class, "property"),
             Parameter.of(Object.class, "value"));
 
-    for (String property : bindable.getBeanDescriptor().getProperties()) {
+    for (final String property : bindable.getBeanDescriptor().getProperties()) {
       generateGetter(classBuilder, property, getMethod);
       generateSetter(classBuilder, property, setMethod);
     }
+    getMethod.append(
+        If.objEquals(Stmt.loadVariable("property"), "this")
+            .append(target().returnValue())
+            .finish()
+        );
+    setMethod.append(
+        If.cond(Stmt.loadVariable("property").invoke("equals", "this"))
+            .append(agent().loadField("target").assignValue(
+                    Stmt.castTo(bindable, Stmt.loadVariable("value"))))
+            .append(
+                Stmt.returnVoid())
+            .finish()
+        );
 
-    Statement nonExistingPropertyException = Stmt.throw_(NonExistingPropertyException.class, Variable.get("property"));
+    final Statement nonExistingPropertyException = Stmt.throw_(NonExistingPropertyException.class, Variable.get("property"));
     getMethod.append(nonExistingPropertyException).finish();
     setMethod.append(nonExistingPropertyException).finish();
+
+    classBuilder.publicMethod(Map.class, "getBeanProperties")
+      .append(Stmt.declareFinalVariable("props", Map.class, ObjectBuilder.newInstanceOf(HashMap.class).withParameters(agent().loadField("propertyTypes"))))
+      .append(Stmt.loadVariable("props").invoke("remove", "this"))
+      .append(Stmt.invokeStatic(Collections.class, "unmodifiableMap", Stmt.loadVariable("props")).returnValue())
+    .finish();
   }
 
   /**
@@ -161,7 +186,7 @@ public class BindableProxyGenerator {
   private void generateGetter(ClassStructureBuilder<?> classBuilder, String property,
       BlockBuilder<?> getMethod) {
 
-    MetaMethod getterMethod = bindable.getBeanDescriptor().getReadMethodForProperty(property);
+    final MetaMethod getterMethod = bindable.getBeanDescriptor().getReadMethodForProperty(property);
     if (getterMethod != null && !getterMethod.isFinal()) {
       getMethod.append(
           If.objEquals(Stmt.loadVariable("property"), property)
@@ -172,7 +197,7 @@ public class BindableProxyGenerator {
       classBuilder.publicMethod(getterMethod.getReturnType(), getterMethod.getName())
           .append(target().invoke(getterMethod.getName()).returnValue())
           .finish();
-      
+
       proxiedAccessorMethods.add(getterMethod);
     }
   }
@@ -182,8 +207,8 @@ public class BindableProxyGenerator {
    * implementation of {@link HasProperties#set(String, Object)}.
    */
   private void generateSetter(ClassStructureBuilder<?> classBuilder, String property, BlockBuilder<?> setMethod) {
-    MetaMethod getterMethod = bindable.getBeanDescriptor().getReadMethodForProperty(property);
-    MetaMethod setterMethod = bindable.getBeanDescriptor().getWriteMethodForProperty(property);
+    final MetaMethod getterMethod = bindable.getBeanDescriptor().getReadMethodForProperty(property);
+    final MetaMethod setterMethod = bindable.getBeanDescriptor().getWriteMethodForProperty(property);
     if (getterMethod != null && setterMethod != null && !setterMethod.isFinal()) {
       setMethod.append(
           If.cond(Stmt.loadVariable("property").invoke("equals", property))
@@ -195,18 +220,18 @@ public class BindableProxyGenerator {
               .finish()
           );
 
-      MetaClass paramType = setterMethod.getParameters()[0].getType();
+      final MetaClass paramType = setterMethod.getParameters()[0].getType();
 
       // If the setter method we are proxying returns a value, capture that value into a local variable
       Statement returnValueOfSetter = null;
-      String returnValName = ensureSafeLocalVariableName("returnValueOfSetter", setterMethod);
-      
+      final String returnValName = ensureSafeLocalVariableName("returnValueOfSetter", setterMethod);
+
       Statement wrappedListProperty = EmptyStatement.INSTANCE;
       if (paramType.isAssignableTo(List.class)) {
         wrappedListProperty = Stmt.loadVariable(property).assignValue(
-            Cast.to(paramType ,agent().invoke("ensureBoundListIsProxied", property, Stmt.loadVariable(property)))); 
+            Cast.to(paramType ,agent().invoke("ensureBoundListIsProxied", property, Stmt.loadVariable(property))));
       }
-      
+
       Statement callSetterOnTarget =
           target().invoke(setterMethod.getName(), Cast.to(paramType, Stmt.loadVariable(property)));
       if (!setterMethod.getReturnType().equals(MetaClassFactory.get(void.class))) {
@@ -223,8 +248,8 @@ public class BindableProxyGenerator {
         updateNestedProxy =
             Stmt.if_(Bool.expr(agent("binders").invoke("containsKey", property)))
                 .append(Stmt.loadVariable(property).assignValue(Cast.to(paramType,
-                    agent("binders").invoke("get", property).invoke("setModel", Variable.get(property), 
-                        Stmt.loadStatic(InitialState.class, "FROM_MODEL"),
+                    agent("binders").invoke("get", property).invoke("setModel", Variable.get(property),
+                        Stmt.loadStatic(StateSync.class, "FROM_MODEL"),
                         Stmt.loadLiteral(true)))))
                 .finish();
       }
@@ -232,19 +257,20 @@ public class BindableProxyGenerator {
         updateNestedProxy = EmptyStatement.INSTANCE;
       }
 
-      String oldValName = ensureSafeLocalVariableName("oldValue", setterMethod);
+      final String oldValName = ensureSafeLocalVariableName("oldValue", setterMethod);
+      final boolean propertyIsList = bindable.getBeanDescriptor().getPropertyType(property).getFullyQualifiedName().equals(List.class.getName());
       classBuilder.publicMethod(setterMethod.getReturnType(), setterMethod.getName(),
           Parameter.of(paramType, property))
           .append(updateNestedProxy)
           .append(
               Stmt.declareVariable(oldValName, paramType, target().invoke(getterMethod.getName())))
-          .append(wrappedListProperty)    
+          .append(wrappedListProperty)
           .append(callSetterOnTarget)
           .append(
-              agent().invoke("updateWidgetsAndFireEvent", property, Variable.get(oldValName), Variable.get(property)))
+              agent().invoke("updateWidgetsAndFireEvent", propertyIsList, property, Variable.get(oldValName), Variable.get(property)))
           .append(returnValueOfSetter)
           .finish();
-      
+
       proxiedAccessorMethods.add(setterMethod);
     }
   }
@@ -256,29 +282,29 @@ public class BindableProxyGenerator {
    * trigger the appropriate UI updates and property change events.
    */
   private void generateNonAccessorMethods(ClassStructureBuilder<?> classBuilder) {
-    for (MetaMethod method : bindable.getMethods()) {
-      String methodName = method.getName();
-      if (!proxiedAccessorMethods.contains(method)  
+    for (final MetaMethod method : bindable.getMethods()) {
+      final String methodName = method.getName();
+      if (!proxiedAccessorMethods.contains(method)
           && !methodName.equals("hashCode") && !methodName.equals("equals") && !methodName.equals("toString")
           && method.isPublic() && !method.isFinal() && !method.isStatic()) {
 
-        Parameter[] parms = DefParameters.from(method).getParameters().toArray(new Parameter[0]);
-        List<Statement> parmVars = new ArrayList<Statement>();
+        final Parameter[] parms = DefParameters.from(method).getParameters().toArray(new Parameter[0]);
+        final List<Statement> parmVars = new ArrayList<Statement>();
         for (int i = 0; i < parms.length; i++) {
           parmVars.add(Stmt.loadVariable(parms[i].getName()));
-          MetaClass type = getTypeOrFirstUpperBound(method.getGenericParameterTypes()[i], method);
+          final MetaClass type = getTypeOrFirstUpperBound(method.getGenericParameterTypes()[i], method);
           if (type == null) return;
           parms[i] = Parameter.of(type, parms[i].getName());
         }
 
         Statement callOnTarget = null;
         Statement returnValue = null;
-        String returnValName = ensureSafeLocalVariableName("returnValue", method);
-        
-        MetaClass returnType = getTypeOrFirstUpperBound(method.getGenericReturnType(), method);
-        if (returnType == null) 
+        final String returnValName = ensureSafeLocalVariableName("returnValue", method);
+
+        final MetaClass returnType = getTypeOrFirstUpperBound(method.getGenericReturnType(), method);
+        if (returnType == null)
           return;
-        
+
         if (!returnType.equals(MetaClassFactory.get(void.class))) {
           callOnTarget = Stmt.declareFinalVariable(returnValName,
               returnType, target().invoke(method, parmVars.toArray()));
@@ -303,23 +329,32 @@ public class BindableProxyGenerator {
    * Generates code to collect all existing properties and their types.
    */
   private Statement generatePropertiesMap() {
-    BlockStatement block = new BlockStatement();
-    for (String property : bindable.getBeanDescriptor().getProperties()) {
-      MetaMethod readMethod = bindable.getBeanDescriptor().getReadMethodForProperty(property);
+    final BlockStatement block = new BlockStatement();
+    for (final String property : bindable.getBeanDescriptor().getProperties()) {
+      final MetaMethod readMethod = bindable.getBeanDescriptor().getReadMethodForProperty(property);
       if (readMethod != null && !readMethod.isFinal()) {
+        final MetaClass propertyType = readMethod.getReturnType();
         block.addStatement(agent("propertyTypes").invoke(
             "put",
             property,
-            Stmt.newObject(PropertyType.class, readMethod.getReturnType().asBoxed().asClass(),
-                DataBindingUtil.isBindableType(readMethod.getReturnType()),
-                readMethod.getReturnType().isAssignableTo(List.class))
+            Stmt.newObject(PropertyType.class, loadLiteral(propertyType.asBoxed()),
+                DataBindingUtil.isBindableType(propertyType),
+                propertyType.isAssignableTo(List.class))
             )
         );
       }
     }
+    block.addStatement(agent("propertyTypes").invoke(
+        "put",
+        "this",
+        Stmt.newObject(PropertyType.class, loadLiteral(bindable.asBoxed()),
+            true,
+            bindable.isAssignableTo(List.class))
+        )
+    );
     return (block.isEmpty()) ? EmptyStatement.INSTANCE : block;
   }
-  
+
   /**
    * Generates method body for recursively unwrapping a {@link BindableProxy}.
    */
@@ -327,25 +362,25 @@ public class BindableProxyGenerator {
     final String cloneVar = "clone";
     final BlockStatement block = new BlockStatement();
     block.addStatement(Stmt.declareFinalVariable(cloneVar, bindable, Stmt.newObject(bindable)));
-    
+
     for (final String property : bindable.getBeanDescriptor().getProperties()) {
       final MetaMethod readMethod = bindable.getBeanDescriptor().getReadMethodForProperty(property);
       final MetaMethod writeMethod = bindable.getBeanDescriptor().getWriteMethodForProperty(property);
       if (readMethod != null && writeMethod != null) {
-        MetaClass type = readMethod.getReturnType();
+        final MetaClass type = readMethod.getReturnType();
         if (!DataBindingUtil.isBindableType(type)) {
           // If we find a collection we copy its elements and unwrap them if necessary
           // TODO support map types
           if (type.isAssignableTo(Collection.class)) {
-            String colVarName = property + "Clone";
-            String elemVarName = property + "Elem";
-            
-            BlockBuilder<ElseBlockBuilder> colBlock = If.isNotNull(Stmt.nestedCall(target().invoke(readMethod)));
-            
-            if ((type.isInterface() || type.isAbstract()) && 
+            final String colVarName = property + "Clone";
+            final String elemVarName = property + "Elem";
+
+            final BlockBuilder<ElseBlockBuilder> colBlock = If.isNotNull(Stmt.nestedCall(target().invoke(readMethod)));
+
+            if ((type.isInterface() || type.isAbstract()) &&
                     (type.isAssignableTo(List.class) || type.isAssignableTo(Set.class))) {
-              MetaClass clazz = (type.isAssignableTo(Set.class)) 
-                      ? MetaClassFactory.get(HashSet.class) : MetaClassFactory.get(ArrayList.class); 
+              final MetaClass clazz = (type.isAssignableTo(Set.class))
+                      ? MetaClassFactory.get(HashSet.class) : MetaClassFactory.get(ArrayList.class);
                 colBlock.append(Stmt.declareFinalVariable(colVarName, type.getErased(), Stmt.newObject(clazz)));
             }
             else {
@@ -353,7 +388,7 @@ public class BindableProxyGenerator {
                 colBlock.append(Stmt.declareFinalVariable(colVarName, type.getErased(), Stmt.newObject(type.getErased())));
               }
               else {
-                logger.log(TreeLogger.WARN, "Bean validation on collection " + property + " in class " + bindable + 
+                logger.log(TreeLogger.WARN, "Bean validation on collection " + property + " in class " + bindable +
                         " won't work. Change to either List or Set or use a concrete type instead.");
                 continue;
               }
@@ -372,7 +407,7 @@ public class BindableProxyGenerator {
                .finish()
              )
              .finish());
-            
+
             colBlock.append(Stmt.loadVariable(cloneVar).invoke(writeMethod, Refs.get(colVarName)));
             block.addStatement(colBlock.finish());
           }
@@ -388,11 +423,20 @@ public class BindableProxyGenerator {
               .append(Stmt.loadVariable(cloneVar).invoke(writeMethod,
                         Cast.to (
                             readMethod.getReturnType(),
-                            Stmt.castTo(BindableProxy.class, Stmt.loadVariable("this").invoke(readMethod))
-                            .invoke(methodName)
+                            Stmt.castTo(BindableProxy.class, Stmt.loadVariable("this").invoke(readMethod)).invoke(methodName)
                         )
                     )
                 )
+              .finish()
+              .elseif_(Stmt.invokeStatic(BindableProxyFactory.class, "isBindableType", target().invoke(readMethod)))
+              .append(Stmt.loadVariable(cloneVar).invoke(writeMethod,
+                      Cast.to (
+                          readMethod.getReturnType(),
+                          Stmt.castTo(BindableProxy.class, Stmt.invokeStatic(BindableProxyFactory.class, 
+                                  "getBindableProxy", target().invoke(readMethod))).invoke(methodName)
+                      )
+                  )
+              )              
               .finish()
               .else_()
                 .append(Stmt.loadVariable(cloneVar).invoke(writeMethod, target().invoke(readMethod)))
@@ -401,9 +445,9 @@ public class BindableProxyGenerator {
         }
       }
     }
-    
+
     block.addStatement(Stmt.loadVariable(cloneVar).returnValue());
-    
+
     return block;
   }
 
@@ -416,9 +460,9 @@ public class BindableProxyGenerator {
   }
 
   private String ensureSafeLocalVariableName(String name, MetaMethod method) {
-    MetaParameter[] params = method.getParameters();
+    final MetaParameter[] params = method.getParameters();
     if (params != null) {
-      for (MetaParameter param : params) {
+      for (final MetaParameter param : params) {
         if (name.equals(param.getName())) {
           name = "_" + name;
           break;
@@ -449,15 +493,15 @@ public class BindableProxyGenerator {
       }
     });
   }
-  
+
   private MetaClass getTypeOrFirstUpperBound(MetaType clazz, MetaMethod method) {
     if (clazz instanceof MetaTypeVariable) {
-      MetaType[] bounds = ((MetaTypeVariable) clazz).getBounds();
+      final MetaType[] bounds = ((MetaTypeVariable) clazz).getBounds();
       if (bounds.length == 1 && bounds[0] instanceof MetaClass) {
-        clazz = ((MetaTypeVariable) clazz).getBounds()[0];  
+        clazz = ((MetaTypeVariable) clazz).getBounds()[0];
       }
       else {
-        // TODO add full support for generics in errai codegen 
+        // TODO add full support for generics in errai codegen
         logger.log(TreeLogger.WARN, "Ignoring method: " + method + " in class " + bindable + ". Methods using " +
             "multiple type parameters or type parameters with multiple bounds are currently not supported in " +
             "@Bindable types! Invoking this method on a bound model will have unpredictable results.");
@@ -470,7 +514,7 @@ public class BindableProxyGenerator {
     if (clazz instanceof MetaClass) {
       return (MetaClass) clazz;
     }
-    
+
     logger.log(TreeLogger.WARN, "Ignoring method: " + method + " in class " + bindable + ". Method cannot be proxied!");
     return null;
   }

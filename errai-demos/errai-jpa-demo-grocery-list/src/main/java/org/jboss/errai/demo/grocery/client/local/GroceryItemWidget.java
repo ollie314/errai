@@ -1,19 +1,19 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2013, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.demo.grocery.client.local;
 
 import javax.annotation.PostConstruct;
@@ -25,10 +25,11 @@ import javax.inject.Inject;
 import javax.persistence.EntityManager;
 
 import org.jboss.errai.databinding.client.api.DataBinder;
-import org.jboss.errai.databinding.client.api.InitialState;
+import org.jboss.errai.databinding.client.api.StateSync;
 import org.jboss.errai.demo.grocery.client.local.convert.RelativeTimeConverter;
 import org.jboss.errai.demo.grocery.client.local.convert.UsernameConverter;
 import org.jboss.errai.demo.grocery.client.shared.Item;
+import org.jboss.errai.ioc.client.api.LoadAsync;
 import org.jboss.errai.ui.client.widget.HasModel;
 import org.jboss.errai.ui.shared.api.annotations.AutoBound;
 import org.jboss.errai.ui.shared.api.annotations.Bound;
@@ -50,6 +51,7 @@ import com.google.gwt.user.client.ui.SimplePanel;
 
 @Dependent
 @Templated("#main")
+@LoadAsync
 public class GroceryItemWidget extends Composite implements HasModel<Item> {
 
   private static Integer NEXT_AVAILABLE_ID = 0;
@@ -113,13 +115,14 @@ public class GroceryItemWidget extends Composite implements HasModel<Item> {
     this.id = NEXT_AVAILABLE_ID;
     NEXT_AVAILABLE_ID++;
     deleteButton.addStyleName("hidden");
+    formHolder.clear();
     formHolder.add(itemEditForm);
     formHolder.addStyleName("hidden");
   }
 
   /**
    * Changes the model object visualized by this class to the given one.
-   * 
+   *
    * @param item
    *          The item that should become the model of this class. Must not be null.
    * @return The proxied version of the given item object, for purposes of data binding. If you intend to make any
@@ -129,7 +132,7 @@ public class GroceryItemWidget extends Composite implements HasModel<Item> {
   @Override
   public void setModel(Item item) {
     System.out.println("ItemWidget: adopting model object " + System.identityHashCode(item));
-    itemBinder.setModel(item, InitialState.FROM_MODEL);
+    itemBinder.setModel(item, StateSync.FROM_MODEL);
   }
 
   @Override
@@ -139,7 +142,7 @@ public class GroceryItemWidget extends Composite implements HasModel<Item> {
 
   /**
    * The following functions handle user interaction with the web app
-   * 
+   *
    * @param event
    *          The user-generated interactive event
    */
@@ -252,7 +255,7 @@ public class GroceryItemWidget extends Composite implements HasModel<Item> {
     addedBy.removeAttribute("display");
     addedOn.removeAttribute("display");
   }
-  
+
   /**
    * Close edit form from within widget and update widget data
    * @param item
@@ -261,7 +264,7 @@ public class GroceryItemWidget extends Composite implements HasModel<Item> {
     setModel(item);
     switchToDisplayMode();
   }
-  
+
   @PreDestroy
   private void toBeDestroyed() {
     System.out.println("GroceryItemWidget for " + name + " is being destroyed.");

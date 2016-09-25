@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 JBoss, by Red Hat, Inc
+ * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,8 +16,14 @@
 
 package org.jboss.errai.ioc.client.container;
 
+import javax.enterprise.context.spi.CreationalContext;
+
 /**
+ * Contract for injectable client-side instances for run-time bean management.
+ * 
  * @author Mike Brock
+ * @author Max Barkley <mbarkley@redhat.com>
+ * @author Christian Sadilek <csadilek@redhat.com>
  */
 public interface ClientBeanManager {
   /**
@@ -53,16 +59,6 @@ public interface ClientBeanManager {
   Object getActualBeanReference(Object ref);
 
   /**
-   * Associates the reference to a proxied bean to the underlying bean instance which it is proxying.
-   *
-   * @param proxyRef
-   *     the reference to the proxy
-   * @param realRef
-   *     the reference to the bean being proxied.
-   */
-  void addProxyReference(final Object proxyRef, final Object realRef);
-
-  /**
    * Determines whether the referenced object is itself a proxy to a managed bean.
    *
    * @param ref
@@ -89,16 +85,6 @@ public interface ClientBeanManager {
    *         {@link CreationalContext} and <tt>false</tt> if not.
    */
   boolean addDestructionCallback(Object beanInstance, DestructionCallback<?> destructionCallback);
-
-  /**
-   * Associates a bean instance with a creational context.
-   *
-   * @param ref
-   *     the reference to the bean
-   * @param creationalContext
-   *     the {@link CreationalContext} instance to associate the bean instance with.
-   */
-  void addBeanToContext(final Object ref, final CreationalContext creationalContext);
 
   /**
    * Destroy all beans currently managed by the bean manager. Don't do this.

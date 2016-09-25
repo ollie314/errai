@@ -1,30 +1,42 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2013, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2013 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.demo.grocery.client.local;
 
 import java.util.List;
 
+import javax.enterprise.context.Dependent;
+
 import org.jboss.errai.demo.grocery.client.shared.Department;
+import org.jboss.errai.ioc.client.api.LoadAsync;
 import org.jboss.errai.ui.client.widget.ListWidget;
 
 import com.google.gwt.animation.client.Animation;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.Style.Unit;
-import com.google.gwt.event.dom.client.*;
+import com.google.gwt.event.dom.client.DragEnterEvent;
+import com.google.gwt.event.dom.client.DragEnterHandler;
+import com.google.gwt.event.dom.client.DragLeaveEvent;
+import com.google.gwt.event.dom.client.DragLeaveHandler;
+import com.google.gwt.event.dom.client.DragOverEvent;
+import com.google.gwt.event.dom.client.DragOverHandler;
+import com.google.gwt.event.dom.client.DragStartEvent;
+import com.google.gwt.event.dom.client.DragStartHandler;
+import com.google.gwt.event.dom.client.DropEvent;
+import com.google.gwt.event.dom.client.DropHandler;
 
 /**
  * A list of Department objects (each represented by a DepartmentWidget) whose entries can be dragged to rearrange their order.
@@ -33,6 +45,8 @@ import com.google.gwt.event.dom.client.*;
  *
  * @author Jonathan Fuerth <jfuerth@redhat.com>
  */
+@Dependent
+@LoadAsync
 public class DepartmentList extends ListWidget<Department, DepartmentWidget> {
 
     /**
@@ -42,7 +56,7 @@ public class DepartmentList extends ListWidget<Department, DepartmentWidget> {
     private DepartmentWidget draggingDepartmentWidget;
 
     @Override
-    protected Class<DepartmentWidget> getItemWidgetType() {
+    protected Class<DepartmentWidget> getItemComponentType() {
         return DepartmentWidget.class;
     }
 
@@ -71,7 +85,7 @@ public class DepartmentList extends ListWidget<Department, DepartmentWidget> {
         // make all the widgets draggable
         for (int i = 0; i < getPanel().getWidgetCount(); i++) {
             final int widgetIndex = i;
-            final DepartmentWidget dw = getWidget(widgetIndex);
+            final DepartmentWidget dw = getComponent(widgetIndex);
             dw.getElement().getStyle().setPaddingRight(20, Unit.PX);
             final ItemMoveAnimation growAnimation = new ItemMoveAnimation(dw);
             dw.getElement().setDraggable(Element.DRAGGABLE_TRUE);
@@ -128,8 +142,8 @@ public class DepartmentList extends ListWidget<Department, DepartmentWidget> {
 
                 }
             }, DropEvent.getType());
-            
-           
+
+
         }
     }
 

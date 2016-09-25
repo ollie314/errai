@@ -1,12 +1,12 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,12 +15,6 @@
  */
 
 package org.jboss.errai.bus.server;
-
-import junit.framework.TestCase;
-import org.jboss.errai.bus.client.tests.support.RandomProvider;
-import org.jboss.errai.bus.server.io.OutputStreamWriteAdapter;
-import org.jboss.errai.bus.server.io.buffers.BufferColor;
-import org.jboss.errai.bus.server.io.buffers.TransmissionBuffer;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -50,6 +44,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 
+import org.jboss.errai.bus.client.tests.support.RandomProvider;
+import org.jboss.errai.bus.server.io.OutputStreamWriteAdapter;
+import org.jboss.errai.bus.server.io.buffers.BufferColor;
+import org.jboss.errai.bus.server.io.buffers.TransmissionBuffer;
+
+import junit.framework.TestCase;
+
 /**
  * @author Mike Brock
  */
@@ -75,7 +76,7 @@ public class TransmissionBufferTests extends TestCase {
 
       assertEquals(s, new String(bOutputStream.toByteArray()));
     }
-    catch (IOException e) {
+    catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }
@@ -146,7 +147,7 @@ public class TransmissionBufferTests extends TestCase {
 
   public void testAudited() throws Exception {
 
-    final List<BufferColor> colors = new ArrayList<BufferColor>();
+    final List<BufferColor> colors = new ArrayList<>();
 
     final TransmissionBuffer buffer = TransmissionBuffer.create();
 
@@ -158,7 +159,7 @@ public class TransmissionBufferTests extends TestCase {
     final String[] writeString = {"<JIMMY>", "<CRAB>", "<KITTY>", "<DOG>", "<JONATHAN>"};
 
 
-    final Map<Short, List<String>> writeLog = new HashMap<Short, List<String>>();
+    final Map<Short, List<String>> writeLog = new HashMap<>();
 
     final int createCount = 500;
 
@@ -181,14 +182,14 @@ public class TransmissionBufferTests extends TestCase {
 
             List<String> stack = writeLog.get(toContend.getColor());
             if (stack == null) {
-              writeLog.put(toContend.getColor(), stack = new ArrayList<String>());
+              writeLog.put(toContend.getColor(), stack = new ArrayList<>());
             }
 
             stack.add(toWrite);
 
             System.out.println("Wrote color " + toContend.getColor() + ": " + toWrite + ". Total writes is now " + totalWrites);
           }
-          catch (IOException e) {
+          catch (final IOException e) {
             e.printStackTrace();
           }
         }
@@ -211,7 +212,7 @@ public class TransmissionBufferTests extends TestCase {
       final String val = new String(byteArrayOutputStream.toByteArray());
       results.add(val);
 
-      final List<String> buildResultList = new ArrayList<String>();
+      final List<String> buildResultList = new ArrayList<>();
 
       int st = 0;
       for (int c = 0; c < val.length(); c++) {
@@ -223,8 +224,8 @@ public class TransmissionBufferTests extends TestCase {
       }
 
 
-      final List<String> resultList = new ArrayList<String>(buildResultList);
-      final List<String> log = new ArrayList<String>(writeLog.get(colors.get(i).getColor()));
+      final List<String> resultList = new ArrayList<>(buildResultList);
+      final List<String> log = new ArrayList<>(writeLog.get(colors.get(i).getColor()));
 
       while (!log.isEmpty() && !resultList.isEmpty()) {
         final String nm = log.remove(0);
@@ -272,27 +273,32 @@ public class TransmissionBufferTests extends TestCase {
     final BufferColor colorA = BufferColor.getNewColor();
 
     final RandomProvider random = new RandomProvider() {
-      private char[] CHARS = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',
+      private final char[] CHARS = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q',
           'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
 
-      private Random random = new Random(System.nanoTime());
+      private final Random random = new Random(System.nanoTime());
 
+      @Override
       public boolean nextBoolean() {
         return random.nextBoolean();
       }
 
+      @Override
       public int nextInt(final int upper) {
         return random.nextInt(upper);
       }
 
+      @Override
       public double nextDouble() {
         return new BigDecimal(random.nextDouble(), MathContext.DECIMAL32).doubleValue();
       }
 
+      @Override
       public char nextChar() {
         return CHARS[nextInt(1000) % CHARS.length];
       }
 
+      @Override
       public String randString() {
         final StringBuilder builder = new StringBuilder();
         final int len = nextInt(25) + 5;
@@ -323,7 +329,7 @@ public class TransmissionBufferTests extends TestCase {
         assertEquals(s, new String(bOutputStream.toByteArray()));
       }
     }
-    catch (IOException e) {
+    catch (final IOException e) {
       throw new RuntimeException(e);
     }
   }
@@ -353,13 +359,13 @@ public class TransmissionBufferTests extends TestCase {
 
     logWriter.println("START SESSION: " + new Date().toString());
     try {
-      final List<BufferColor> segs = new ArrayList<BufferColor>();
+      final List<BufferColor> segs = new ArrayList<>();
       for (int i = 0; i < SEGMENT_COUNT; i++) {
         segs.add(BufferColor.getNewColor());
       }
 
-      final Collection<String> writeAuditLog = new ConcurrentLinkedQueue<String>();
-      final Collection<String> readAuditLog = new ConcurrentLinkedQueue<String>();
+      final Collection<String> writeAuditLog = new ConcurrentLinkedQueue<>();
+      final Collection<String> readAuditLog = new ConcurrentLinkedQueue<>();
 
       final int createCount = 10000;
       final String[] writeString = new String[createCount];
@@ -401,7 +407,7 @@ public class TransmissionBufferTests extends TestCase {
           }
 
           final String val = new String(byteArrayOutputStream.toByteArray()).trim();
-          final List<String> buildResultList = new ArrayList<String>();
+          final List<String> buildResultList = new ArrayList<>();
 
           logWriter.println(val);
 
@@ -451,7 +457,7 @@ public class TransmissionBufferTests extends TestCase {
               testReader.read(color, true, true);
             }
           }
-          catch (Throwable t) {
+          catch (final Throwable t) {
             t.printStackTrace();
           }
         }
@@ -472,7 +478,7 @@ public class TransmissionBufferTests extends TestCase {
                 testReader.read(color, true, false);
               }
             }
-            catch (Throwable t) {
+            catch (final Throwable t) {
               t.printStackTrace();
             }
           }
@@ -497,7 +503,7 @@ public class TransmissionBufferTests extends TestCase {
               totalWrites.incrementAndGet();
               latch.countDown();
             }
-            catch (Throwable e) {
+            catch (final Throwable e) {
               e.printStackTrace();
             }
           }
@@ -529,7 +535,7 @@ public class TransmissionBufferTests extends TestCase {
           try {
             testReader.read(segs.get(i), false, false);
           }
-          catch (Exception e) {
+          catch (final Exception e) {
             e.printStackTrace();
           }
         }
@@ -546,15 +552,15 @@ public class TransmissionBufferTests extends TestCase {
       System.out.println("Read / Write Symmetry Analysis ... ");
       for (final String s : writeAuditLog) {
         if (!readAuditLog.contains(s)) {
-          final Collection<String> leftDiff = new ArrayList<String>(writeAuditLog);
+          final Collection<String> leftDiff = new ArrayList<>(writeAuditLog);
           leftDiff.removeAll(readAuditLog);
 
-          final Collection<String> rightDiff = new ArrayList<String>(readAuditLog);
+          final Collection<String> rightDiff = new ArrayList<>(readAuditLog);
           rightDiff.removeAll(writeAuditLog);
 
-          final Set<String> uniqueReads = new HashSet<String>(readAuditLog);
+          final Set<String> uniqueReads = new HashSet<>(readAuditLog);
 
-          final List<String> duplicates = new ArrayList<String>(readAuditLog);
+          final List<String> duplicates = new ArrayList<>(readAuditLog);
           if (uniqueReads.size() < readAuditLog.size()) {
             for (final String str : uniqueReads) {
               duplicates.remove(duplicates.indexOf(str));
@@ -724,7 +730,7 @@ public class TransmissionBufferTests extends TestCase {
 
             }
           }
-          catch (Throwable t) {
+          catch (final Throwable t) {
             t.printStackTrace();
           }
         }
@@ -745,6 +751,33 @@ public class TransmissionBufferTests extends TestCase {
 
     for (final Thread thread : threads) {
       thread.join();
+    }
+  }
+
+  public void testNoIndexOutOfBoundsExceptionWhenWriteHeadGetsLarge() throws Exception {
+    // Preparation to get the writeSequenceNumber large enough
+    final int segmentSize = 1;
+    final int segments = Integer.MAX_VALUE / 4;
+    final TransmissionBuffer buffer = TransmissionBuffer.create(segmentSize, segments);
+    final InputStream nullInputStream = new InputStream() {
+      @Override
+      public int read() throws IOException {
+        return 0;
+      }
+    };
+    final BufferColor color = BufferColor.getNewColorFromHead(buffer);
+    long accum = 0;
+    final int writeSize = segmentSize * segments;
+    while ((accum + writeSize) < Integer.MAX_VALUE) {
+      buffer.write(writeSize, nullInputStream, color);
+      accum += writeSize;
+    }
+
+    // Actual test
+    try {
+      buffer.write(writeSize, nullInputStream, color);
+    } catch (final IndexOutOfBoundsException ex) {
+      throw new AssertionError(ex);
     }
   }
 }

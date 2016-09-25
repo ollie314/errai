@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,10 @@
 
 package org.jboss.errai.enterprise.client.cdi;
 
+import static org.jboss.errai.ioc.client.IOCUtil.joinQualifiers;
+import static org.jboss.errai.ioc.client.QualifierUtil.DEFAULT_ANNOTATION;
+import static org.jboss.errai.ioc.client.container.IOC.getBeanManager;
+
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,87 +28,105 @@ import java.util.Iterator;
 import javax.enterprise.inject.Instance;
 import javax.inject.Singleton;
 
+import org.jboss.errai.ioc.client.IOCUtil;
 import org.jboss.errai.ioc.client.api.ContextualTypeProvider;
-import org.jboss.errai.ioc.client.api.EnabledByProperty;
 import org.jboss.errai.ioc.client.api.IOCProvider;
 import org.jboss.errai.ioc.client.container.IOC;
-import org.jboss.errai.ioc.client.container.IOCBeanDef;
+import org.jboss.errai.ioc.client.container.SyncBeanDef;
 
+@SuppressWarnings("rawtypes")
 @IOCProvider
 @Singleton
-@EnabledByProperty(value = "errai.ioc.async_bean_manager", negated = true)
 public class InstanceProvider implements ContextualTypeProvider<Instance> {
 
+  @SuppressWarnings("unchecked")
   @Override
   public Instance provide(final Class[] typeargs, final Annotation[] qualifiers) {
 
     /*
-    * If you see a compile error here, ensure that you are using Errai's custom
-    * version of javax.enterprise.event.Event, which comes from the
-    * errai-javax-enterprise project. The errai-cdi-client POM is set up this
-    * way.
-    *
-    * Eclipse users: seeing an error here probably indicates that M2E has
-    * clobbered your errai-javax-enterprise source folder settings. To fix your
-    * setup, see the README in the root of errai-javax-enterprise.
-    */
+     * If you see a compile error here, ensure that you are using Errai's custom
+     * version of javax.enterprise.event.Event, which comes from the
+     * errai-javax-enterprise project. The errai-cdi-client POM is set up this
+     * way.
+     *
+     * Eclipse users: seeing an error here probably indicates that M2E has
+     * clobbered your errai-javax-enterprise source folder settings. To fix your
+     * setup, see the README in the root of errai-javax-enterprise.
+     */
 
-    return new InstanceImpl(typeargs[0], qualifiers);
+    return new InstanceImpl(typeargs[0], qualifiers.length == 0 ? new Annotation[] { DEFAULT_ANNOTATION } : qualifiers);
   }
 
-  static class InstanceImpl implements Instance<Object> {
-    private final Class type;
+  static class InstanceImpl<T> implements Instance<T> {
+    private final Class<T> type;
     private final Annotation[] qualifiers;
 
-    InstanceImpl(final Class type, final Annotation[] qualifiers) {
+    InstanceImpl(final Class<T> type, final Annotation[] qualifiers) {
       this.type = type;
       this.qualifiers = qualifiers;
     }
 
     @Override
-    public Instance<Object> select(final Annotation... qualifiers) {
-      return new InstanceImpl(type, qualifiers);
+    public Instance<T> select(final Annotation... qualifiers) {
+      return select(type, qualifiers);
     }
 
     @Override
-    public Instance select(final Class subtype, final Annotation... qualifiers) {
-      return new InstanceImpl(subtype, qualifiers);
+    public <U extends T> Instance<U> select(final Class<U> subtype, final Annotation... qualifiers) {
+      return new InstanceImpl<U>(subtype, joinQualifiers(this.qualifiers, qualifiers));
     }
 
     @Override
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public boolean isUnsatisfied() {
-      Collection beanDefs = IOC.getBeanManager().lookupBeans(type, qualifiers);
-      return beanDefs.isEmpty(); 
+      return IOCUtil.isUnsatisfied(type, qualifiers);
     }
 
     @Override
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public boolean isAmbiguous() {
-      Collection beanDefs = IOC.getBeanManager().lookupBeans(type, qualifiers);
-      return beanDefs.size() > 1;
+      return IOCUtil.isAmbiguous(type, qualifiers);
     }
 
     @Override
-    public Iterator<Object> iterator() {
-      return Collections.emptyList().iterator();
+    public Iterator<T> iterator() {
+      final Collection<SyncBeanDef<T>> beanDefs = IOC.getBeanManager().lookupBeans( type, qualifiers );
+      if(beanDefs==null){
+        return Collections.<T>emptyList().iterator();
+      }
+      return new InstanceImplIterator(beanDefs);
     }
 
-    
     @Override
-    public Object get() {
-      final IOCBeanDef bean = IOC.getBeanManager().lookupBean(type, qualifiers);
-      if (bean == null) {
-        return null;
-      }
-      else {
-        return bean.getInstance();
-      }
+    public T get() {
+      return IOCUtil.getInstance(type, qualifiers);
     }
 
-	@Override
-	public void destroy(final Object instance) {
-	  IOC.getBeanManager().destroyBean(instance);
-	}
+    @Override
+    public void destroy(final Object instance) {
+      getBeanManager().destroyBean(instance);
+    }
+
+    private class InstanceImplIterator implements Iterator<T> {
+
+      private final Iterator<SyncBeanDef<T>> delegate;
+
+      public InstanceImplIterator( final Collection<SyncBeanDef<T>> beanDefs ) {
+        this.delegate = beanDefs.iterator();
+      }
+
+      @Override
+      public boolean hasNext() {
+        return delegate.hasNext();
+      }
+
+      @Override
+      public T next() {
+        return delegate.next().getInstance();
+      }
+
+      @Override
+      public void remove() {
+        throw new UnsupportedOperationException();
+      }
+    }
   }
 }

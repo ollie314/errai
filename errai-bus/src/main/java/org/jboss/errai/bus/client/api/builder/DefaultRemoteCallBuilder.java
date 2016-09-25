@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.jboss.errai.bus.client.api.BusErrorCallback;
+import org.jboss.errai.bus.client.api.base.DefaultErrorCallback;
 import org.jboss.errai.bus.client.api.base.MessageBuilder;
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.bus.client.api.messaging.MessageBus;
@@ -120,7 +121,12 @@ public class DefaultRemoteCallBuilder {
                     bus.unsubscribeAll(replyTo);
                   }
                   message.set(MessageParts.AdditionalDetails, m.get(String.class, MessageParts.AdditionalDetails));
-                  message.getErrorCallback().error(message, m.get(Throwable.class, MessageParts.Throwable));
+                  final Throwable throwable = m.get(Throwable.class, MessageParts.Throwable);
+                  final boolean defaultErrorHandling = message.getErrorCallback().error(message,
+                      throwable);
+                  if (defaultErrorHandling) {
+                    DefaultErrorCallback.INSTANCE.error(message, throwable);
+                  }
                 }
               }
           );
@@ -133,8 +139,10 @@ public class DefaultRemoteCallBuilder {
 
     final RemoteCallErrorDef errorDef = new RemoteCallErrorDef() {
       @Override
-      public RemoteCallSendable errorsHandledBy(ErrorCallback errorCallback) {
-        message.errorsCall(errorCallback);
+      public RemoteCallSendable errorsHandledBy(@SuppressWarnings("rawtypes") ErrorCallback errorCallback) {
+        if (errorCallback != null) {
+          message.errorsCall(errorCallback);
+        }
         return sendable;
       }
 
@@ -167,7 +175,7 @@ public class DefaultRemoteCallBuilder {
 
         if (qualifiers != null) {
           final List<String> qualNames = new ArrayList<String>(qualifiers.length);
-          for (Annotation a : qualifiers) {
+          for (final Annotation a : qualifiers) {
             qualNames.add(a.annotationType().getName());
           }
 

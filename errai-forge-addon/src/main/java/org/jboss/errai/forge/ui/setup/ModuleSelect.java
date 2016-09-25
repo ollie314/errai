@@ -1,20 +1,28 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2014, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2014 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.forge.ui.setup;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+
+import javax.inject.Inject;
 
 import org.apache.maven.model.Build;
 import org.apache.maven.model.Model;
@@ -36,13 +44,6 @@ import org.jboss.forge.addon.ui.result.Result;
 import org.jboss.forge.addon.ui.result.Results;
 import org.jboss.forge.addon.ui.util.Metadata;
 import org.jboss.forge.addon.ui.wizard.UIWizardStep;
-
-import javax.inject.Inject;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
 
 public class ModuleSelect extends AbstractUICommand implements UIWizardStep {
 
@@ -110,11 +111,14 @@ public class ModuleSelect extends AbstractUICommand implements UIWizardStep {
   private static Collection<File> findGwtModuleFiles(final File f) {
     if (f.exists()) {
       if (f.isDirectory()) {
-        Collection<File> retVal = new LinkedList<File>();
-        for (final File child : f.listFiles()) {
-          final Collection<File> result = findGwtModuleFiles(child);
-          if (result.size() > 0) {
-            retVal.addAll(result);
+        final Collection<File> retVal = new LinkedList<File>();
+        final File[] files = f.listFiles();
+        if (files != null) {
+          for (final File child : files) {
+            final Collection<File> result = findGwtModuleFiles(child);
+            if (result.size() > 0) {
+              retVal.addAll(result);
+            }
           }
         }
 
@@ -140,7 +144,7 @@ public class ModuleSelect extends AbstractUICommand implements UIWizardStep {
 
     if (dir.exists()) {
       final Collection<File> found = findGwtModuleFiles(dir);
-      for (File file : found) {
+      for (final File file : found) {
         String relPath = file.getAbsolutePath().replace(dir.getAbsolutePath(), "");
         if (relPath.charAt(0) == File.separatorChar)
           relPath = relPath.substring(1);

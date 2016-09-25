@@ -4,7 +4,7 @@
   <parent>
     <artifactId>errai-parent</artifactId>
     <groupId>org.jboss.errai</groupId>
-    <version>3.2.1-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -47,7 +47,6 @@
       <artifactId>errai-data-binding</artifactId>
     </dependency>
 
-    <!-- Must come after errai-common is inherited for patched JUnitShell -->
     <dependency>
       <groupId>com.google.gwt</groupId>
       <artifactId>gwt-user</artifactId>
@@ -90,13 +89,13 @@
             <configuration>
               <skipTests>false</skipTests>
               <additionalClasspathElements>
-                <additionalClasspathElement>${basedir}/${testOutputDirectory}/</additionalClasspathElement>
+                <additionalClasspathElement>${basedir}/${project.build.testOutputDirectory}/</additionalClasspathElement>
                 <additionalClasspathElement>${basedir}/src/main/java/</additionalClasspathElement>
                 <additionalClasspathElement>${basedir}/src/test/java/</additionalClasspathElement>
               </additionalClasspathElements>
               <useManifestOnlyJar>false</useManifestOnlyJar>
               <forkMode>pertest</forkMode>
-              <argLine>${argLine} -Xmx1500m -Derrai.devel.nocache=true -Derrai.codegen.permissive=false</argLine>
+              <argLine>${argLine} -Xmx1500m -Derrai.devel.nocache=true -Derrai.codegen.permissive=false -Derrai.dynamic_validation.enabled=true</argLine>
 
               <systemProperties>
                 <!-- Must disable long polling for automated tests to succeed -->
@@ -112,26 +111,6 @@
                 </property>
               </systemProperties>
             </configuration>
-          </plugin>
-          <plugin>
-            <groupId>org.jboss.errai</groupId>
-            <artifactId>jacoco-gwt-maven-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>jacoco-initialize</id>
-                <phase>initialize</phase>
-                <goals>
-                  <goal>prepare-agent</goal>
-                </goals>
-              </execution>
-              <execution>
-                <id>jacoco-site</id>
-                <phase>site</phase>
-                <goals>
-                  <goal>report</goal>
-                </goals>
-              </execution>
-            </executions>
           </plugin>
         </plugins>
       </build>

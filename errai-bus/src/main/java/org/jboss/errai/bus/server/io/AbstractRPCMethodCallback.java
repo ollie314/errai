@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.bus.server.io;
 
 import static org.slf4j.LoggerFactory.getLogger;
@@ -34,9 +50,10 @@ public abstract class AbstractRPCMethodCallback implements MessageCallback {
   }
 
   public Object invokeMethodFromMessage(Message message) {
+    @SuppressWarnings("unchecked")
     final List<Object> parms = message.get(List.class, "MethodParms");
 
-    if ((parms == null && targetTypes.length != 0) || (parms.size() != targetTypes.length)) {
+    if ((parms == null && targetTypes.length != 0) || (parms != null && parms.size() != targetTypes.length)) {
       throw new MessageDeliveryFailure(
           "wrong number of arguments sent to endpoint. (received: "
               + (parms == null ? 0 : parms.size())
@@ -45,19 +62,19 @@ public abstract class AbstractRPCMethodCallback implements MessageCallback {
 
     try {
       RpcContext.set(message);
-      return method.invoke(serviceProvider.get(message), parms.toArray(new Object[parms.size()]));
+      return method.invoke(serviceProvider.get(message), (parms != null) ? parms.toArray(new Object[parms.size()]) : new Object[0]);
     }
-    catch (QueueUnavailableException e) {
+    catch (final QueueUnavailableException e) {
       throw e;
     }
-    catch (MessageDeliveryFailure e) {
+    catch (final MessageDeliveryFailure e) {
       throw e;
     }
-    catch (InvocationTargetException e) {
+    catch (final InvocationTargetException e) {
       log.debug("RPC endpoint threw exception:", e.getCause());
       throw new MessageDeliveryFailure("error invoking RPC endpoint " + method, e.getCause(), true);
     }
-    catch (Exception e) {
+    catch (final Exception e) {
       throw new MessageDeliveryFailure("error invoking endpoint", e);
     }
     finally {

@@ -1,15 +1,37 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.ui.nav.client.local;
 
+import org.jboss.errai.common.client.dom.Anchor;
 import org.jboss.errai.enterprise.client.cdi.AbstractErraiCDITest;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.SyncBeanManager;
+import org.jboss.errai.ui.nav.client.local.res.NativeAnchorTestModule;
+import org.jboss.errai.ui.nav.client.local.testpages.NonCompositePage;
 import org.jboss.errai.ui.nav.client.local.testpages.OtherPageWithTransitionAnchor;
+import org.jboss.errai.ui.nav.client.local.testpages.PageB;
 import org.jboss.errai.ui.nav.client.local.testpages.PageWithTransitionAnchor;
+import org.jboss.errai.ui.nav.client.local.testpages.PageWithUniqueRole;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.gwt.dom.client.Document;
 import com.google.gwt.event.dom.client.ClickEvent;
+import com.google.gwt.user.client.ui.RootPanel;
 
 public class TransitionAnchorTest extends AbstractErraiCDITest {
 
@@ -28,9 +50,9 @@ public class TransitionAnchorTest extends AbstractErraiCDITest {
   }
 
   public void testTransitionAnchorInjection() throws Exception {
-    TransitionAnchorTestApp app = beanManager.lookupBean(TransitionAnchorTestApp.class).getInstance();
+    final TransitionAnchorTestApp app = beanManager.lookupBean(TransitionAnchorTestApp.class).getInstance();
     assertNotNull(app);
-    PageWithTransitionAnchor page = app.getPage();
+    final PageWithTransitionAnchor page = app.getPage();
     assertNotNull(page);
 
     // Ensure that an injected TransitionAnchor works
@@ -38,7 +60,7 @@ public class TransitionAnchorTest extends AbstractErraiCDITest {
     assertTrue(page.linkToB.getHref().endsWith("#page_b"));
 
     // Now ensure that an injected TransitionAnchorFactory works
-    assertEquals(4, page.getWidgetCount());
+    assertEquals(5, page.getWidgetCount());
     // TransitionAnchor from factory #1
     TransitionAnchor<?> factoryAnchor = (TransitionAnchor<?>) page.getWidget(1);
     assertNotNull(factoryAnchor);
@@ -53,15 +75,32 @@ public class TransitionAnchorTest extends AbstractErraiCDITest {
     assertTrue(factoryAnchor.getHref().endsWith("#page_b_with_state;uuid=54321"));
   }
 
+  public void testTransitionAnchorWithNonCompositePage() throws Exception {
+    final TransitionAnchorTestApp app = beanManager.lookupBean(TransitionAnchorTestApp.class).getInstance();
+    assertNotNull(app);
+    final PageWithTransitionAnchor page = app.getPage();
+    assertNotNull(page);
+
+    // Ensure that an injected TransitionAnchor works
+    assertNotNull(page.linkToNonComp.getHref());
+    assertTrue(page.linkToNonComp.getHref().endsWith("#" + NonCompositePage.class.getSimpleName()));
+
+    // TransitionAnchor from factory #1
+    final TransitionAnchor<?> factoryAnchor = page.nonCompLinkFactory.get();
+    RootPanel.get().add(factoryAnchor);
+    assertNotNull(factoryAnchor);
+    assertTrue(factoryAnchor.getHref().endsWith("#" + NonCompositePage.class.getSimpleName()));
+  }
+
   public void testTransitionAnchorSetDisabled() throws Exception {
     // Get nav panel
-    Navigation nav = beanManager.lookupBean(Navigation.class).getInstance();
+    final Navigation nav = beanManager.lookupBean(Navigation.class).getInstance();
     assertNotNull(nav);
     // Get test page
-    OtherPageWithTransitionAnchor page = beanManager.lookupBean(OtherPageWithTransitionAnchor.class).getInstance();
+    final OtherPageWithTransitionAnchor page = beanManager.lookupBean(OtherPageWithTransitionAnchor.class).getInstance();
     assertNotNull(page);
     // Navigate to test page
-    nav.goTo(page.getClass(), (Multimap) HashMultimap.create());
+    nav.goTo(OtherPageWithTransitionAnchor.class, (Multimap) HashMultimap.create());
     assertTrue(page.isAttached());
 
     // Disable anchor
@@ -73,25 +112,25 @@ public class TransitionAnchorTest extends AbstractErraiCDITest {
 
   public void testTransitionAnchorDisabledOnClick() throws Exception {
     // Get nav panel
-    Navigation nav = beanManager.lookupBean(Navigation.class).getInstance();
+    final Navigation nav = beanManager.lookupBean(Navigation.class).getInstance();
     assertNotNull(nav);
     // is a singleton
     // Get test page
-    OtherPageWithTransitionAnchor page = beanManager.lookupBean(OtherPageWithTransitionAnchor.class).getInstance();
+    final OtherPageWithTransitionAnchor page = beanManager.lookupBean(OtherPageWithTransitionAnchor.class).getInstance();
     assertNotNull(page);
     // Navigate to test page
-    nav.goTo(page.getClass(), (Multimap) HashMultimap.create());
+    nav.goTo(OtherPageWithTransitionAnchor.class, (Multimap) HashMultimap.create());
     assertTrue(page.isAttached());
-    
+
     // Make sure that click event triggers link while enabled
     ClickEvent.fireNativeEvent(Document.get().createClickEvent(0, 0, 0, 0, 0, false, false, false, false),
             page.getAnchor(), page.getAnchor().getElement());
     assertFalse(page.isAttached());
-    
+
     // Navigate back to test page
-    nav.goTo(page.getClass(), (Multimap) HashMultimap.create());
+    nav.goTo(OtherPageWithTransitionAnchor.class, (Multimap) HashMultimap.create());
     assertTrue(page.isAttached());
-    
+
     // Disable anchor
     page.getAnchor().setEnabled(false);
     // Fire click event
@@ -102,4 +141,29 @@ public class TransitionAnchorTest extends AbstractErraiCDITest {
     assertTrue(page.isAttached());
   }
 
+  public void testNativeTransitionToAnchor() throws Exception {
+    final NativeAnchorTestModule module = beanManager.lookupBean(NativeAnchorTestModule.class).getInstance();
+    final Navigation nav = beanManager.lookupBean(Navigation.class).getInstance();
+
+    nav.goTo("");
+    assertFalse(PageB.class.equals(nav.getCurrentPage().contentType()));
+
+    invokeOnClick(module.pageB);
+    assertEquals(PageB.class, nav.getCurrentPage().contentType());
+  }
+
+  public void testNativeTransitionToRoleAnchor() throws Exception {
+    final NativeAnchorTestModule module = beanManager.lookupBean(NativeAnchorTestModule.class).getInstance();
+    final Navigation nav = beanManager.lookupBean(Navigation.class).getInstance();
+
+    nav.goTo("");
+    assertFalse(PageWithUniqueRole.class.equals(nav.getCurrentPage().contentType()));
+
+    invokeOnClick(module.uniqueRole);
+    assertEquals(PageWithUniqueRole.class, nav.getCurrentPage().contentType());
+  }
+
+  private static native void invokeOnClick(Anchor anchor) /*-{
+    anchor.onclick();
+  }-*/;
 }

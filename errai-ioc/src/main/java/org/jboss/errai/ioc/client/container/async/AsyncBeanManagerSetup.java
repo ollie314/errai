@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 JBoss, by Red Hat, Inc
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,31 +16,25 @@
 
 package org.jboss.errai.ioc.client.container.async;
 
-import java.lang.annotation.Annotation;
+import org.jboss.errai.ioc.client.container.Factory;
+import org.jboss.errai.ioc.client.container.FactoryHandle;
 
 /**
- * @author Mike Brock
+ *
+ * @author Max Barkley <mbarkley@redhat.com>
  */
 public interface AsyncBeanManagerSetup {
-  void addBean(Class<Object> type,
-               Class<?> beanType,
-               AsyncBeanProvider<Object> callback,
-               Object instance,
-               Annotation[] qualifiers);
 
-  void addBean(Class<Object> type,
-               Class<?> beanType,
-               AsyncBeanProvider<Object> callback,
-               Object instance,
-               Annotation[] qualifiers,
-               String name);
+  void registerAsyncBean(FactoryHandle handle, FactoryLoader<?> future);
 
-  void addBean(Class<Object> type,
-               Class<?> beanType,
-               AsyncBeanProvider<Object> callback,
-               Object instance,
-               Annotation[] qualifiers,
-               String name,
-               boolean concreteType,
-               Class<Object> beanActivatorType);
+  void registerAsyncDependency(String dependentFactoryName, String dependencyFactoryName);
+
+  public static interface FactoryLoaderCallback<T> {
+    void callback(Factory<T> factory);
+  }
+
+  public static interface FactoryLoader<T> {
+    void call(FactoryLoaderCallback<T> callback);
+  }
+
 }

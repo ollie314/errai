@@ -1,19 +1,19 @@
-/**
- * JBoss, Home of Professional Open Source
- * Copyright 2014, Red Hat, Inc. and/or its affiliates, and individual
- * contributors by the @authors tag. See the copyright.txt in the
- * distribution for a full listing of individual contributors.
+/*
+ * Copyright (C) 2014 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.jboss.errai.security.client.local;
 
 import java.lang.annotation.Annotation;
@@ -25,11 +25,12 @@ import org.jboss.errai.bus.client.api.base.MessageBuilder;
 import org.jboss.errai.bus.client.api.messaging.Message;
 import org.jboss.errai.common.client.api.Caller;
 import org.jboss.errai.common.client.api.RemoteCallback;
-import org.jboss.errai.common.client.api.VoidCallback;
+import org.jboss.errai.common.client.api.NoOpCallback;
 import org.jboss.errai.common.client.api.extension.InitVotes;
 import org.jboss.errai.enterprise.client.jaxrs.JaxrsModule;
 import org.jboss.errai.enterprise.client.jaxrs.api.RestClient;
 import org.jboss.errai.enterprise.client.jaxrs.api.RestErrorCallback;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.security.client.local.res.Counter;
 import org.jboss.errai.security.client.local.res.CountingRemoteCallback;
@@ -51,7 +52,7 @@ import com.google.gwt.user.client.Timer;
  * {@link BusSecurityInterceptorTest}. This test class ensures that the same
  * interceptors are properly generated for jaxrs endpoints (as well as the
  * server-side interceptors).
- * 
+ *
  * @author Max Barkley <mbarkley@redhat.com>
  */
 public class RestSecurityInterceptorTest extends AbstractSecurityInterceptorTest {
@@ -68,7 +69,7 @@ public class RestSecurityInterceptorTest extends AbstractSecurityInterceptorTest
     InitVotes.registerOneTimeInitCallback(new Runnable() {
       @Override
       public void run() {
-        MessageBuilder.createCall(new VoidCallback(), AuthenticationService.class).logout();
+        MessageBuilder.createCall(new NoOpCallback<Void>(), AuthenticationService.class).logout();
       }
     });
     activeUserCache = IOC.getBeanManager().lookupBean(ActiveUserCache.class, new Annotation() {
@@ -80,7 +81,7 @@ public class RestSecurityInterceptorTest extends AbstractSecurityInterceptorTest
   }
 
   @Test
-  public void testAnybodyServiceNotblocked() throws Exception {
+  public void testAnybodyServiceNotBlocked() throws Exception {
     final Counter callbackCounter = new Counter();
     helper(new Runnable() {
       @Override
@@ -275,8 +276,8 @@ public class RestSecurityInterceptorTest extends AbstractSecurityInterceptorTest
 
   private static SecureRestService restCallHelper(final RemoteCallback<Void> callback,
           final RestErrorCallback errorCallback) {
-    final Caller<SecureRestService> caller = IOC.getBeanManager().lookupBean(RestSecurityTestModule.class)
-            .getInstance().restCaller;
+    final Caller<SecureRestService> caller = Factory
+            .maybeUnwrapProxy(IOC.getBeanManager().lookupBean(RestSecurityTestModule.class).getInstance()).restCaller;
 
     if (errorCallback != null) {
       return caller.call(callback, errorCallback);

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.jpa.test.entity;
 
 import java.math.BigDecimal;
@@ -206,16 +222,16 @@ public class Zentity {
   /**
    * Constructor that sets all values except the id, which is managed by JPA.
    */
-  public Zentity(boolean primitiveBool, Boolean boxedBool, byte primitiveByte,
-          Byte boxedByte, byte[] primitiveByteArray, Byte[] boxedByteArray,
-          char primitiveChar, Character boxedChar, char[] primitiveCharArray,
-          Character[] boxedCharArray, short primitiveShort, Short boxedShort,
-          int primitiveInt, Integer boxedInt, long primitiveLong,
-          Long boxedLong, float primitiveFloat, Float boxedFloat,
-          double primitiveDouble, Double boxedDouble, String string,
-          BigInteger bigInteger, BigDecimal bigDecimal, Date date,
-          java.sql.Date sqlDate, Time sqlTime,
-          Timestamp sqlTimestamp, PersistenceContextType enumeration) {
+  public Zentity(final boolean primitiveBool, final Boolean boxedBool, final byte primitiveByte,
+          final Byte boxedByte, final byte[] primitiveByteArray, final Byte[] boxedByteArray,
+          final char primitiveChar, final Character boxedChar, final char[] primitiveCharArray,
+          final Character[] boxedCharArray, final short primitiveShort, final Short boxedShort,
+          final int primitiveInt, final Integer boxedInt, final long primitiveLong,
+          final Long boxedLong, final float primitiveFloat, final Float boxedFloat,
+          final double primitiveDouble, final Double boxedDouble, final String string,
+          final BigInteger bigInteger, final BigDecimal bigDecimal, final Date date,
+          final java.sql.Date sqlDate, final Time sqlTime,
+          final Timestamp sqlTimestamp, final PersistenceContextType enumeration) {
     this.primitiveBool = primitiveBool;
     this.boxedBool = boxedBool;
     this.primitiveByte = primitiveByte;
@@ -254,7 +270,7 @@ public class Zentity {
     return primitiveBool;
   }
 
-  public void setPrimitiveBool(boolean primitiveBool) {
+  public void setPrimitiveBool(final boolean primitiveBool) {
     this.primitiveBool = primitiveBool;
   }
 
@@ -262,7 +278,7 @@ public class Zentity {
     return boxedBool;
   }
 
-  public void setBoxedBool(Boolean boxedBool) {
+  public void setBoxedBool(final Boolean boxedBool) {
     this.boxedBool = boxedBool;
   }
 
@@ -270,7 +286,7 @@ public class Zentity {
     return primitiveByte;
   }
 
-  public void setPrimitiveByte(byte primitiveByte) {
+  public void setPrimitiveByte(final byte primitiveByte) {
     this.primitiveByte = primitiveByte;
   }
 
@@ -278,7 +294,7 @@ public class Zentity {
     return boxedByte;
   }
 
-  public void setBoxedByte(Byte boxedByte) {
+  public void setBoxedByte(final Byte boxedByte) {
     this.boxedByte = boxedByte;
   }
 
@@ -286,7 +302,7 @@ public class Zentity {
     return primitiveByteArray;
   }
 
-  public void setPrimitiveByteArray(byte[] primitiveByteArray) {
+  public void setPrimitiveByteArray(final byte[] primitiveByteArray) {
     this.primitiveByteArray = primitiveByteArray;
   }
 
@@ -294,7 +310,7 @@ public class Zentity {
     return boxedByteArray;
   }
 
-  public void setBoxedByteArray(Byte[] boxedByteArray) {
+  public void setBoxedByteArray(final Byte[] boxedByteArray) {
     this.boxedByteArray = boxedByteArray;
   }
 
@@ -302,7 +318,7 @@ public class Zentity {
     return primitiveChar;
   }
 
-  public void setPrimitiveChar(char primitiveChar) {
+  public void setPrimitiveChar(final char primitiveChar) {
     this.primitiveChar = primitiveChar;
   }
 
@@ -310,7 +326,7 @@ public class Zentity {
     return boxedChar;
   }
 
-  public void setBoxedChar(Character boxedChar) {
+  public void setBoxedChar(final Character boxedChar) {
     this.boxedChar = boxedChar;
   }
 
@@ -318,7 +334,7 @@ public class Zentity {
     return primitiveCharArray;
   }
 
-  public void setPrimitiveCharArray(char[] primitiveCharArray) {
+  public void setPrimitiveCharArray(final char[] primitiveCharArray) {
     this.primitiveCharArray = primitiveCharArray;
   }
 
@@ -326,7 +342,7 @@ public class Zentity {
     return boxedCharArray;
   }
 
-  public void setBoxedCharArray(Character[] boxedCharArray) {
+  public void setBoxedCharArray(final Character[] boxedCharArray) {
     this.boxedCharArray = boxedCharArray;
   }
 
@@ -334,7 +350,7 @@ public class Zentity {
     return primitiveShort;
   }
 
-  public void setPrimitiveShort(short primitiveShort) {
+  public void setPrimitiveShort(final short primitiveShort) {
     this.primitiveShort = primitiveShort;
   }
 
@@ -342,7 +358,7 @@ public class Zentity {
     return boxedShort;
   }
 
-  public void setBoxedShort(Short boxedShort) {
+  public void setBoxedShort(final Short boxedShort) {
     this.boxedShort = boxedShort;
   }
 
@@ -350,7 +366,7 @@ public class Zentity {
     return primitiveInt;
   }
 
-  public void setPrimitiveInt(int primitiveInt) {
+  public void setPrimitiveInt(final int primitiveInt) {
     this.primitiveInt = primitiveInt;
   }
 
@@ -358,7 +374,7 @@ public class Zentity {
     return boxedInt;
   }
 
-  public void setBoxedInt(Integer boxedInt) {
+  public void setBoxedInt(final Integer boxedInt) {
     this.boxedInt = boxedInt;
   }
 
@@ -366,7 +382,7 @@ public class Zentity {
     return primitiveLong;
   }
 
-  public void setPrimitiveLong(long primitiveLong) {
+  public void setPrimitiveLong(final long primitiveLong) {
     this.primitiveLong = primitiveLong;
   }
 
@@ -374,7 +390,7 @@ public class Zentity {
     return boxedLong;
   }
 
-  public void setBoxedLong(Long boxedLong) {
+  public void setBoxedLong(final Long boxedLong) {
     this.boxedLong = boxedLong;
   }
 
@@ -382,7 +398,7 @@ public class Zentity {
     return primitiveFloat;
   }
 
-  public void setPrimitiveFloat(float primitiveFloat) {
+  public void setPrimitiveFloat(final float primitiveFloat) {
     this.primitiveFloat = primitiveFloat;
   }
 
@@ -390,7 +406,7 @@ public class Zentity {
     return boxedFloat;
   }
 
-  public void setBoxedFloat(Float boxedFloat) {
+  public void setBoxedFloat(final Float boxedFloat) {
     this.boxedFloat = boxedFloat;
   }
 
@@ -398,7 +414,7 @@ public class Zentity {
     return primitiveDouble;
   }
 
-  public void setPrimitiveDouble(double primitiveDouble) {
+  public void setPrimitiveDouble(final double primitiveDouble) {
     this.primitiveDouble = primitiveDouble;
   }
 
@@ -406,7 +422,7 @@ public class Zentity {
     return boxedDouble;
   }
 
-  public void setBoxedDouble(Double boxedDouble) {
+  public void setBoxedDouble(final Double boxedDouble) {
     this.boxedDouble = boxedDouble;
   }
 
@@ -414,7 +430,7 @@ public class Zentity {
     return string;
   }
 
-  public void setString(String string) {
+  public void setString(final String string) {
     this.string = string;
   }
 
@@ -422,7 +438,7 @@ public class Zentity {
     return bigInteger;
   }
 
-  public void setBigInteger(BigInteger bigInteger) {
+  public void setBigInteger(final BigInteger bigInteger) {
     this.bigInteger = bigInteger;
   }
 
@@ -430,7 +446,7 @@ public class Zentity {
     return bigDecimal;
   }
 
-  public void setBigDecimal(BigDecimal bigDecimal) {
+  public void setBigDecimal(final BigDecimal bigDecimal) {
     this.bigDecimal = bigDecimal;
   }
 
@@ -438,7 +454,7 @@ public class Zentity {
     return date;
   }
 
-  public void setDate(Date date) {
+  public void setDate(final Date date) {
     this.date = date;
   }
 
@@ -446,7 +462,7 @@ public class Zentity {
     return sqlDate;
   }
 
-  public void setSqlDate(java.sql.Date sqlDate) {
+  public void setSqlDate(final java.sql.Date sqlDate) {
     this.sqlDate = sqlDate;
   }
 
@@ -454,7 +470,7 @@ public class Zentity {
     return sqlTime;
   }
 
-  public void setSqlTime(Time sqlTime) {
+  public void setSqlTime(final Time sqlTime) {
     this.sqlTime = sqlTime;
   }
 
@@ -462,7 +478,7 @@ public class Zentity {
     return sqlTimestamp;
   }
 
-  public void setSqlTimestamp(Timestamp sqlTimestamp) {
+  public void setSqlTimestamp(final Timestamp sqlTimestamp) {
     this.sqlTimestamp = sqlTimestamp;
   }
 
@@ -470,30 +486,34 @@ public class Zentity {
     return enumeration;
   }
 
-  public void setEnumeration(PersistenceContextType enumeration) {
+  public void setEnumeration(final PersistenceContextType enumeration) {
     this.enumeration = enumeration;
   }
 
   @Override
   public String toString() {
-    return "Zentity [id=" + id + ", primitiveBool=" + primitiveBool
-            + ", boxedBool=" + boxedBool + ", primitiveByte=" + primitiveByte
-            + ", boxedByte=" + boxedByte + ", primitiveByteArray="
+    return "Zentity [id=" + toString(id) + ", primitiveBool=" + toString(primitiveBool)
+            + ", boxedBool=" + toString(boxedBool) + ", primitiveByte=" + toString(primitiveByte)
+            + ", boxedByte=" + toString(boxedByte) + ", primitiveByteArray="
             + Arrays.toString(primitiveByteArray) + ", boxedByteArray="
             + Arrays.toString(boxedByteArray) + ", primitiveChar="
-            + primitiveChar + ", boxedChar=" + boxedChar
+            + toString(primitiveChar) + ", boxedChar=" + toString(boxedChar)
             + ", primitiveCharArray=" + Arrays.toString(primitiveCharArray)
             + ", boxedCharArray=" + Arrays.toString(boxedCharArray)
-            + ", primitiveShort=" + primitiveShort + ", boxedShort="
-            + boxedShort + ", primitiveInt=" + primitiveInt + ", boxedInt="
-            + boxedInt + ", primitiveLong=" + primitiveLong + ", boxedLong="
-            + boxedLong + ", primitiveFloat=" + primitiveFloat
-            + ", boxedFloat=" + boxedFloat + ", primitiveDouble="
-            + primitiveDouble + ", boxedDouble=" + boxedDouble + ", string="
-            + string + ", bigInteger=" + bigInteger + ", bigDecimal="
-            + bigDecimal + ", date=" + date + ", sqlDate=" + sqlDate + ", sqlTime=" + sqlTime
-            + ", sqlTimestamp=" + sqlTimestamp + ", enumeration=" + enumeration
+            + ", primitiveShort=" + toString(primitiveShort) + ", boxedShort="
+            + toString(boxedShort) + ", primitiveInt=" + toString(primitiveInt) + ", boxedInt="
+            + toString(boxedInt) + ", primitiveLong=" + toString(primitiveLong) + ", boxedLong="
+            + toString(boxedLong) + ", primitiveFloat=" + toString(primitiveFloat)
+            + ", boxedFloat=" + toString(boxedFloat) + ", primitiveDouble="
+            + toString(primitiveDouble) + ", boxedDouble=" + toString(boxedDouble) + ", string="
+            + toString(string) + ", bigInteger=" + toString(bigInteger) + ", bigDecimal="
+            + toString(bigDecimal) + ", date=" + toString(date) + ", sqlDate=" + toString(sqlDate) + ", sqlTime=" + toString(sqlTime)
+            + ", sqlTimestamp=" + toString(sqlTimestamp) + ", enumeration=" + toString(enumeration)
             + "]";
+  }
+
+  private static String toString(final Object val) {
+    return (val == null ? "null" : val.toString());
   }
 
 }

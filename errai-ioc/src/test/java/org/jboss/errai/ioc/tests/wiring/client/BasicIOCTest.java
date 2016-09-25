@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, a divison Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,20 +16,57 @@
 
 package org.jboss.errai.ioc.tests.wiring.client;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.jboss.errai.ioc.client.IOCClientTestCase;
+import org.jboss.errai.ioc.client.QualifierUtil;
+import org.jboss.errai.ioc.client.container.ClientBeanManager;
+import org.jboss.errai.ioc.client.container.Factory;
 import org.jboss.errai.ioc.client.container.IOC;
-import org.jboss.errai.ioc.client.container.IOCBeanDef;
+import org.jboss.errai.ioc.client.container.IOCEnvironment;
+import org.jboss.errai.ioc.client.container.IOCResolutionException;
+import org.jboss.errai.ioc.client.container.SyncBeanDef;
 import org.jboss.errai.ioc.rebind.ioc.test.harness.IOCSimulatedTestRunner;
-import org.jboss.errai.ioc.tests.wiring.client.res.*;
+import org.jboss.errai.ioc.tests.wiring.client.res.ActivatedBean;
+import org.jboss.errai.ioc.tests.wiring.client.res.ActivatedBeanInterface;
+import org.jboss.errai.ioc.tests.wiring.client.res.AfterTask;
+import org.jboss.errai.ioc.tests.wiring.client.res.AppScopedBeanInvokingSelf;
+import org.jboss.errai.ioc.tests.wiring.client.res.BeanManagerDependentBean;
+import org.jboss.errai.ioc.tests.wiring.client.res.BeforeTask;
+import org.jboss.errai.ioc.tests.wiring.client.res.DependentOnInnerType;
+import org.jboss.errai.ioc.tests.wiring.client.res.DependentBeanWithConstructorCycle;
+import org.jboss.errai.ioc.tests.wiring.client.res.DependentWithPackageConstr;
+import org.jboss.errai.ioc.tests.wiring.client.res.DependentWithPrivateConstr;
+import org.jboss.errai.ioc.tests.wiring.client.res.DependentWithProtectedConstr;
+import org.jboss.errai.ioc.tests.wiring.client.res.HappyInspector;
+import org.jboss.errai.ioc.tests.wiring.client.res.IfaceProducer;
+import org.jboss.errai.ioc.tests.wiring.client.res.ProxiableInjectableConstr;
+import org.jboss.errai.ioc.tests.wiring.client.res.ProxiableInjectableConstrThrowsNPE;
+import org.jboss.errai.ioc.tests.wiring.client.res.ProxiableNonPublicPostconstruct;
+import org.jboss.errai.ioc.tests.wiring.client.res.ProxiableProtectedConstr;
+import org.jboss.errai.ioc.tests.wiring.client.res.PublicInnerClassIface;
+import org.jboss.errai.ioc.tests.wiring.client.res.QualInspector;
+import org.jboss.errai.ioc.tests.wiring.client.res.SetterInjectionBean;
+import org.jboss.errai.ioc.tests.wiring.client.res.SimpleBean;
+import org.jboss.errai.ioc.tests.wiring.client.res.SimpleBean2;
+import org.jboss.errai.ioc.tests.wiring.client.res.SimpleSingleton;
+import org.jboss.errai.ioc.tests.wiring.client.res.SimpleSingleton2;
+import org.jboss.errai.ioc.tests.wiring.client.res.TestBeanActivator;
+import org.jboss.errai.ioc.tests.wiring.client.res.TestProviderDependentBean;
+import org.jboss.errai.ioc.tests.wiring.client.res.TestResultsSingleton;
+import org.jboss.errai.ioc.tests.wiring.client.res.TransverseDepService;
 import org.junit.runner.RunWith;
+
+import com.google.gwt.core.shared.GWT;
 
 @RunWith(IOCSimulatedTestRunner.class)
 public class BasicIOCTest extends IOCClientTestCase {
 
   static {
     // Force classloading of SimpleBean so the package is discovered.
+    @SuppressWarnings("unused")
+    final
     Class<?> cls = SimpleBean.class;
   }
 
@@ -39,13 +76,13 @@ public class BasicIOCTest extends IOCClientTestCase {
   }
 
   public void testBasicInjectionScenarios() {
-    SimpleSingleton simpleSingleton = IOC.getBeanManager().lookupBean(SimpleSingleton.class).getInstance();
-    SimpleSingleton2 simpleSingleton2 = IOC.getBeanManager().lookupBean(SimpleSingleton2.class).getInstance();
+    final SimpleSingleton simpleSingleton = IOC.getBeanManager().lookupBean(SimpleSingleton.class).getInstance();
+    final SimpleSingleton2 simpleSingleton2 = IOC.getBeanManager().lookupBean(SimpleSingleton2.class).getInstance();
 
     assertNotNull(simpleSingleton);
     assertNotNull(simpleSingleton2);
 
-    SimpleBean simpleBean = IOC.getBeanManager().lookupBean(SimpleBean.class).getInstance();
+    final SimpleBean simpleBean = IOC.getBeanManager().lookupBean(SimpleBean.class).getInstance();
     assertNotNull(simpleBean);
 
     assertEquals(simpleSingleton, simpleBean.getSingletonA());
@@ -54,7 +91,7 @@ public class BasicIOCTest extends IOCClientTestCase {
     assertEquals(simpleSingleton, simpleBean.getSuperSimpleSingleton());
     assertEquals(simpleSingleton2, simpleBean.getSingleton2());
 
-    TransverseDepService transverseDepService = IOC.getBeanManager().lookupBean(TransverseDepService.class).getInstance();
+    final TransverseDepService transverseDepService = IOC.getBeanManager().lookupBean(TransverseDepService.class).getInstance();
 
     assertNotNull("svcA is null", simpleBean.getSvcA());
     assertNotNull("svcB is null", simpleBean.getSvcB());
@@ -68,17 +105,17 @@ public class BasicIOCTest extends IOCClientTestCase {
   }
 
   public void testNewInstanceFromSingleton() {
-    SimpleSingleton simpleSingleton = IOC.getBeanManager().lookupBean(SimpleSingleton.class).getInstance();
-    SimpleSingleton2 simpleSingleton2 = IOC.getBeanManager().lookupBean(SimpleSingleton2.class).getInstance();
+    final SimpleSingleton simpleSingleton = IOC.getBeanManager().lookupBean(SimpleSingleton.class).getInstance();
+    final SimpleSingleton2 simpleSingleton2 = IOC.getBeanManager().lookupBean(SimpleSingleton2.class).getInstance();
 
 
     assertNotNull(simpleSingleton);
     assertNotNull(simpleSingleton2);
 
-    SimpleBean simpleBean1 = IOC.getBeanManager().lookupBean(SimpleBean.class).getInstance();
+    final SimpleBean simpleBean1 = IOC.getBeanManager().lookupBean(SimpleBean.class).getInstance();
     assertNotNull(simpleBean1);
 
-    SimpleBean simpleBean2 = IOC.getBeanManager().lookupBean(SimpleBean.class).newInstance();
+    final SimpleBean simpleBean2 = IOC.getBeanManager().lookupBean(SimpleBean.class).newInstance();
 
     assertNotSame("should have gotten new instance", simpleBean1, simpleBean2);
 
@@ -88,7 +125,7 @@ public class BasicIOCTest extends IOCClientTestCase {
     assertEquals(simpleSingleton, simpleBean2.getSuperSimpleSingleton());
     assertEquals(simpleSingleton2, simpleBean2.getSingleton2());
 
-    TransverseDepService transverseDepService = IOC.getBeanManager().lookupBean(TransverseDepService.class).getInstance();
+    final TransverseDepService transverseDepService = IOC.getBeanManager().lookupBean(TransverseDepService.class).getInstance();
 
     assertNotNull("svcA is null", simpleBean2.getSvcA());
     assertNotNull("svcB is null", simpleBean2.getSvcB());
@@ -102,7 +139,7 @@ public class BasicIOCTest extends IOCClientTestCase {
   }
 
   public void testSetterMethodInjection() {
-    SetterInjectionBean bean = IOC.getBeanManager().lookupBean(SetterInjectionBean.class)
+    final SetterInjectionBean bean = IOC.getBeanManager().lookupBean(SetterInjectionBean.class)
             .getInstance();
 
     assertNotNull(bean);
@@ -111,20 +148,20 @@ public class BasicIOCTest extends IOCClientTestCase {
   }
 
   public void testInjectionFromProvider() {
-    SimpleBean2 simpleBean2 = IOC.getBeanManager().lookupBean(SimpleBean2.class).getInstance();
+    final SimpleBean2 simpleBean2 = IOC.getBeanManager().lookupBean(SimpleBean2.class).getInstance();
 
     assertEquals("FOO", simpleBean2.getMessage());
   }
 
   public void testInjectionFromProviderContextual() {
-    SimpleBean2 simpleBean2 = IOC.getBeanManager().lookupBean(SimpleBean2.class).getInstance();
+    final SimpleBean2 simpleBean2 = IOC.getBeanManager().lookupBean(SimpleBean2.class).getInstance();
 
     assertEquals("FOO", simpleBean2.getMessage());
     assertEquals("java.lang.String", simpleBean2.getbSvc().get());
   }
 
   public void testInterfaceResolution() {
-    HappyInspector happyInspector = IOC.getBeanManager().lookupBean(HappyInspector.class).getInstance();
+    final HappyInspector happyInspector = IOC.getBeanManager().lookupBean(HappyInspector.class).getInstance();
     assertTrue(happyInspector.confirmHappiness());
 
     assertNotNull(happyInspector.getStringService());
@@ -138,57 +175,150 @@ public class BasicIOCTest extends IOCClientTestCase {
   }
 
   public void testQualifiers() {
-    QualInspector qualInspector = QualInspector.INSTANCE;
+    final QualInspector qualInspector = QualInspector.INSTANCE;
 
     assertTrue(qualInspector.getaQualService().get() instanceof Integer);
     assertTrue(qualInspector.getbQualService().get() instanceof String);
   }
-  
+
   public void testIOCTasks() {
     assertTrue("BeforeTask did not run", BeforeTask.ran);
     assertTrue("AfterTask did not run", AfterTask.ran);
 
-    List<Class<?>> results = TestResultsSingleton.getItemsRun();
+    final List<Class<?>> results = TestResultsSingleton.getItemsRun();
     assertTrue("BeforeTask did not run before AfterTask!",
             results.indexOf(BeforeTask.class) < results.indexOf(AfterTask.class));
-    
+
   }
-  
+
   public void testBeanManagerInjectable() {
-    BeanManagerDependentBean bean = IOC.getBeanManager().lookupBean(BeanManagerDependentBean.class)
+    final BeanManagerDependentBean bean = IOC.getBeanManager().lookupBean(BeanManagerDependentBean.class)
             .getInstance();
-    
-    assertSame(IOC.getBeanManager(), bean.getBeanManager());
+
+    final ClientBeanManager beanManager = (GWT.<IOCEnvironment>create(IOCEnvironment.class).isAsync() ? IOC.getAsyncBeanManager() : IOC.getBeanManager());
+    assertSame(beanManager, Factory.maybeUnwrapProxy(bean.getBeanManager()));
   }
 
   public void testProvidedValueLookup() {
-    TestProviderDependentBean dependentBean = IOC.getBeanManager().lookupBean(TestProviderDependentBean.class)
+    final TestProviderDependentBean dependentBean = IOC.getBeanManager().lookupBean(TestProviderDependentBean.class)
         .getInstance();
 
     assertNotNull(dependentBean);
     assertNotNull(dependentBean.getTestProvidedIface());
     assertEquals("foo", dependentBean.getTestProvidedIface().getText());
   }
-  
+
   public void testBeanActivator() {
-    TestBeanActivator activator = IOC.getBeanManager().lookupBean(TestBeanActivator.class).getInstance();
+    final TestBeanActivator activator = IOC.getBeanManager().lookupBean(TestBeanActivator.class).getInstance();
     activator.setActived(true);
-    
-    IOCBeanDef<ActivatedBean> bean = IOC.getBeanManager().lookupBean(ActivatedBean.class);
+
+    final SyncBeanDef<ActivatedBean> bean = IOC.getBeanManager().lookupBean(ActivatedBean.class);
     assertTrue(bean.isActivated());
 
     activator.setActived(false);
     assertFalse(bean.isActivated());
-    
-    IOCBeanDef<ActivatedBeanInterface> qualifiedBean = IOC.getBeanManager().lookupBean(ActivatedBeanInterface.class);
+
+    final SyncBeanDef<ActivatedBeanInterface> qualifiedBean = IOC.getBeanManager().lookupBean(ActivatedBeanInterface.class);
     assertFalse(qualifiedBean.isActivated());
-    
+
     activator.setActived(true);
     assertTrue(qualifiedBean.isActivated());
   }
-  
+
   public void testBeanActiveByDefault() {
-    IOCBeanDef<BeanManagerDependentBean> bean = IOC.getBeanManager().lookupBean(BeanManagerDependentBean.class);
+    final SyncBeanDef<BeanManagerDependentBean> bean = IOC.getBeanManager().lookupBean(BeanManagerDependentBean.class);
     assertTrue(bean.isActivated());
+  }
+
+  public void testInjectingStaticInnerClass() {
+    final DependentOnInnerType instance = IOC.getBeanManager().lookupBean(DependentOnInnerType.class).getInstance();
+    assertNotNull(instance.getInner());
+  }
+
+  public void testLoadingBeanWithProxiableNonPublicPostConstruct() {
+    final ProxiableNonPublicPostconstruct bean = IOC.getBeanManager().lookupBean(ProxiableNonPublicPostconstruct.class).getInstance();
+    assertTrue(bean.getValue());
+  }
+
+  public void testProxyingWithProtectedConstructor() throws Exception {
+    try {
+      assertEquals("Package constructor should not have been invoked before instance lookup.", 0, ProxiableProtectedConstr.numPrivateConstrInvocations);
+      IOC.getBeanManager().lookupBean(ProxiableProtectedConstr.class).getInstance();
+      assertEquals("Private constructor was not used to create proxy.", 1, ProxiableProtectedConstr.numPrivateConstrInvocations);
+    } catch (final Throwable t) {
+      throw new AssertionError("Could not construct instance of proxiable type with protected constructor.", t);
+    }
+  }
+
+  public void testProxyingWithOnlyInjectableConstructor() throws Exception {
+    try {
+      IOC.getBeanManager().lookupBean(ProxiableInjectableConstr.class).getInstance();
+    } catch (final Throwable t) {
+      throw new AssertionError("Could not construct instance of proxiable type with injectable constructor.", t);
+    }
+  }
+
+  public void testErrorMessageWhenProxyingFailsWithOnlyInjectableConstructor() throws Exception {
+    try {
+      IOC.getBeanManager().lookupBean(ProxiableInjectableConstrThrowsNPE.class).getInstance();
+      fail("Looking up an instance should have failed when creating proxy.");
+    } catch (final Throwable t) {
+      assertTrue("The error message did not explain that the problem was with proxying.", t.getMessage().contains("proxy"));
+    }
+  }
+
+  public void testDependentScopeWithPrivateConstr() throws Exception {
+    try {
+      IOC.getBeanManager().lookupBean(DependentWithPrivateConstr.class).getInstance();
+    } catch (final Throwable t) {
+      throw new AssertionError("Could not create instance of bean with private constructor.", t);
+    }
+  }
+
+  public void testDependentScopeWithPackageConstr() throws Exception {
+    try {
+      IOC.getBeanManager().lookupBean(DependentWithPackageConstr.class).getInstance();
+    } catch (final Throwable t) {
+      throw new AssertionError("Could not create instance of bean with package constructor.", t);
+    }
+  }
+
+  public void testDependentScopeWithProtectedConstr() throws Exception {
+    try {
+      IOC.getBeanManager().lookupBean(DependentWithProtectedConstr.class).getInstance();
+    } catch (final Throwable t) {
+      throw new AssertionError("Could not create instance of bean with protected constructor.", t);
+    }
+  }
+
+  public void testNoFactoryGeneratedForInnerClassOfNonPublicClass() throws Exception {
+    final Collection<SyncBeanDef<PublicInnerClassIface>> foundBeans = IOC.getBeanManager().lookupBeans(PublicInnerClassIface.class, QualifierUtil.ANY_ANNOTATION);
+    assertEquals(0, foundBeans.size());
+  }
+
+  /*
+   * This test was broken by this change in GWT:
+   * https://github.com/gwtproject/gwt/commit/75382f1202bf3eaa399d60ebdba42bd7522da3bb
+   */
+  public void ignoreInterfaceStaticProducer() throws Exception {
+    try {
+      IOC.getBeanManager().lookupBean(IfaceProducer.class).getInstance();
+    } catch (final IOCResolutionException ex) {
+      throw new AssertionError("Could not produce " + IfaceProducer.class.getSimpleName(), ex);
+    }
+  }
+
+  public void testAppScopedBeanInvokingSelfInPostConstruct() throws Exception {
+    final AppScopedBeanInvokingSelf instance = IOC.getBeanManager().lookupBean(AppScopedBeanInvokingSelf.class).getInstance();
+    assertEquals("foo", instance.getValue());
+  }
+
+  // Regression test for ERRAI-959
+  public void testDependentBeanWithConstructorInjectionCausingCycyleDoesNotBlowUp() throws Exception {
+    try {
+      IOC.getBeanManager().lookupBean(DependentBeanWithConstructorCycle.class).getInstance();
+    } catch (final RuntimeException e) {
+      throw new AssertionError("Could not lookup the dependent bean without error: " + e.getMessage(), e);
+    }
   }
 }

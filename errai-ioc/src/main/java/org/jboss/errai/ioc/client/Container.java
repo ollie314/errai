@@ -1,11 +1,11 @@
 /*
- * Copyright 2011 JBoss, by Red Hat, Inc
+ * Copyright (C) 2011 Red Hat, Inc. and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,99 +16,90 @@
 
 package org.jboss.errai.ioc.client;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
-import org.jboss.errai.ioc.client.container.BeanRef;
-import org.jboss.errai.ioc.client.container.CreationalContext;
+import org.jboss.errai.ioc.client.container.BeanManagerSetup;
+import org.jboss.errai.ioc.client.container.ContextManager;
+import org.jboss.errai.ioc.client.container.ErraiUncaughtExceptionHandler;
+import org.jboss.errai.ioc.client.container.IOC;
 import org.jboss.errai.ioc.client.container.IOCEnvironment;
-import org.jboss.errai.ioc.client.container.SimpleCreationalContext;
-import org.jboss.errai.ioc.client.container.async.AsyncCreationalContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
+import com.google.gwt.core.client.GWT.UncaughtExceptionHandler;
 
 public class Container implements EntryPoint {
-  
+
   private static final Logger logger = LoggerFactory.getLogger(Container.class);
-  
+
   @Override
   public void onModuleLoad() {
     bootstrapContainer();
   }
 
-  // stored for debugging purposes only. overwritten every time the container is bootstrapped.
-  private static BootstrapInjectionContext injectionContext;
+  private void setUncaughtExceptionHandler() {
+    final UncaughtExceptionHandler replacedHandler = GWT.getUncaughtExceptionHandler();
+    GWT.setUncaughtExceptionHandler(new ErraiUncaughtExceptionHandler(replacedHandler));
+  }
 
   public void bootstrapContainer() {
+    setUncaughtExceptionHandler();
+    logger.info("Starting to bootstrap IOC container...");
+    final long bootstrapStart = System.currentTimeMillis();
     try {
       init = false;
 
-      QualifierUtil.initFromFactoryProvider(new QualifierEqualityFactoryProvider() {
-        @Override
-        public QualifierEqualityFactory provide() {
-          return GWT.create(QualifierEqualityFactory.class);
-        }
-      });
+      logger.debug("Initializing {}...", QualifierEqualityFactory.class.getSimpleName());
+      long start = System.currentTimeMillis();
+      QualifierUtil.initFromFactoryProvider(() -> GWT.create(QualifierEqualityFactory.class));
+      logger.debug("{} initialized in {}ms", QualifierEqualityFactory.class.getSimpleName(), System.currentTimeMillis() - start);
 
-      logger.info("IOC bootstrapper successfully initialized.");
-
+      final BeanManagerSetup beanManager;
       if (GWT.<IOCEnvironment>create(IOCEnvironment.class).isAsync()) {
-        logger.info("bean manager initialized in async mode.");
+        logger.info("Bean manager initialized in async mode.");
+        beanManager = (BeanManagerSetup) IOC.getAsyncBeanManager();
+      } else {
+        beanManager = (BeanManagerSetup) IOC.getBeanManager();
       }
 
+      logger.debug("Creating new {} instance...", Bootstrapper.class.getSimpleName());
+      start = System.currentTimeMillis();
       final Bootstrapper bootstrapper = GWT.create(Bootstrapper.class);
-      injectionContext = bootstrapper.bootstrapContainer();
+      logger.debug("Created {} instance in {}ms", Bootstrapper.class.getSimpleName(), System.currentTimeMillis() - start);
 
-      final CreationalContext rootContext = injectionContext.getRootContext();
+      logger.debug("Creating new {} instance...", ContextManager.class.getSimpleName());
+      start = System.currentTimeMillis();
+      final ContextManager contextManager = bootstrapper.bootstrapContainer();
+      logger.debug("Created {} instance in {}ms", ContextManager.class.getSimpleName(), System.currentTimeMillis() - start);
 
-      if (rootContext instanceof AsyncCreationalContext) {
-        ((AsyncCreationalContext) rootContext).finish(new Runnable() {
-          @Override
-          public void run() {
-            finishInit();
-          }
-        });
+      logger.debug("Initializing bean manager...");
+      start = System.currentTimeMillis();
+      beanManager.setContextManager(contextManager);
+      logger.debug("Bean manager initialized in {}ms", System.currentTimeMillis() - start);
+
+      logger.debug("Running post initialization runnables...");
+      start = System.currentTimeMillis();
+      init = true;
+      for (final Runnable run : afterInit) {
+        run.run();
       }
-      else {
-        ((SimpleCreationalContext) rootContext).finish();
-        finishInit();
-      }
+      afterInit.clear();
+      logger.debug("All post initialization runnables finished in {}ms", System.currentTimeMillis() - start);
+
+      logger.info("IOC bootstrapper successfully initialized in {}ms", System.currentTimeMillis() - bootstrapStart);
     }
-    catch (Throwable t) {
-      t.printStackTrace();
-      throw new RuntimeException("critical error in IOC container bootstrap: " + t.getClass().getName() + ": "
-          + t.getMessage());
+    catch (final RuntimeException ex) {
+      logger.error("Critical error in IOC container bootstrap.", ex);
+
+      throw ex;
     }
   }
 
-  private static final List<Runnable> afterInit = new ArrayList<Runnable>();
+  private static final List<Runnable> afterInit = new ArrayList<>();
   private static boolean init = false;
-
-  private void finishInit() {
-    init = true;
-    logger.info(injectionContext.getRootContext().getAllCreatedBeans().size() + " beans successfully deployed.");
-    declareDebugFunction();
-    new CallbacksRunnable().run();
-
-    logger.info("bean manager now in service.");
-
-  }
-
-  private static class CallbacksRunnable implements Runnable {
-    @Override
-    public void run() {
-      final Iterator<Runnable> runnableIterator = afterInit.iterator();
-      while (runnableIterator.hasNext()) {
-        runnableIterator.next().run();
-        runnableIterator.remove();
-      }
-    }
-  }
 
   /**
    * Runs the specified {@link Runnable} only after the bean manager has fully initialized. It is generally not
@@ -127,9 +118,9 @@ public class Container implements EntryPoint {
   public static void runAfterInit(final Runnable runnable) {
     if (init) {
       runnable.run();
+    } else {
+      afterInit.add(runnable);
     }
-
-    afterInit.add(runnable);
   }
 
   /**
@@ -141,46 +132,9 @@ public class Container implements EntryPoint {
     runAfterInit(runnable);
   }
 
-  /**
-   * Declares the JavaScript-accessible debugging function to query the status of the bean manager at runtime. The
-   * JSNI method internally calls {@link #displayBeanManagerStatus()}.
-   */
-  private static native void declareDebugFunction() /*-{
-    $wnd.errai_bean_manager_status = function () {
-      @org.jboss.errai.ioc.client.Container::displayBeanManagerStatus()();
-    }
-  }-*/;
-
-  /**
-   * Logs the bean manager status with gwt-slf4j.
-   */
-  private static void displayBeanManagerStatus() {
-    logger.info("BeanManager Status");
-    logger.info("-------------------------------------------------------------------");
-
-    logger.info("[WIRED BEANS]");
-    for (final BeanRef ref : injectionContext.getRootContext().getAllCreatedBeans()) {
-      logger.info(" -> " + ref.getClazz().getName());
-      logger.info("     qualifiers: " + annotationsToString(ref.getAnnotations()) + ")");
-    }
-    logger.info("Total: " + injectionContext.getRootContext().getAllCreatedBeans().size());
-    logger.info("-------------------------------------------------------------------");
+  public static void reset() {
+    init = false;
+    afterInit.clear();
   }
 
-  /**
-   * Converts the specified annotation array to a string representation. Used to display the bean manager status.
-   *
-   * @param annotations
-   *
-   * @return
-   */
-  private static String annotationsToString(final Annotation[] annotations) {
-    final StringBuilder sb = new StringBuilder("[");
-    for (int i = 0; i < annotations.length; i++) {
-      sb.append(annotations[i].annotationType().getName());
-
-      if (i + 1 < annotations.length) sb.append(", ");
-    }
-    return sb.toString();
-  }
 }

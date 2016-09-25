@@ -1,22 +1,30 @@
+/*
+ * Copyright (C) 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.jboss.errai.ioc.rebind.ioc.bootstrapper;
 
 import static org.jboss.errai.codegen.meta.MetaClassFactory.parameterizedAs;
 import static org.jboss.errai.codegen.meta.MetaClassFactory.typeParametersOf;
 import static org.jboss.errai.codegen.util.Stmt.invokeStatic;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
-
-import javax.enterprise.util.Nonbinding;
-import javax.inject.Named;
-import javax.inject.Qualifier;
 
 import org.jboss.errai.codegen.ArithmeticOperator;
 import org.jboss.errai.codegen.Parameter;
@@ -30,18 +38,17 @@ import org.jboss.errai.codegen.builder.impl.ClassBuilder;
 import org.jboss.errai.codegen.builder.impl.ObjectBuilder;
 import org.jboss.errai.codegen.meta.MetaClass;
 import org.jboss.errai.codegen.meta.MetaMethod;
-import org.jboss.errai.codegen.meta.impl.gwt.GWTClass;
 import org.jboss.errai.codegen.meta.impl.java.JavaReflectionClass;
 import org.jboss.errai.codegen.util.Arith;
+import org.jboss.errai.codegen.util.CDIAnnotationUtils;
 import org.jboss.errai.codegen.util.If;
 import org.jboss.errai.codegen.util.Refs;
 import org.jboss.errai.codegen.util.Stmt;
-import org.jboss.errai.common.metadata.MetaDataScanner;
 import org.jboss.errai.common.metadata.RebindUtils;
-import org.jboss.errai.common.metadata.ScannerSingleton;
 import org.jboss.errai.ioc.client.AnnotationComparator;
 import org.jboss.errai.ioc.client.QualifierEqualityFactory;
 import org.jboss.errai.ioc.client.QualifierUtil;
+import org.jboss.errai.ioc.util.TranslatableAnnotationUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,16 +57,15 @@ import com.google.gwt.core.ext.GeneratorContext;
 import com.google.gwt.core.ext.TreeLogger;
 import com.google.gwt.core.ext.UnableToCompleteException;
 import com.google.gwt.core.ext.typeinfo.JClassType;
-import com.google.gwt.core.ext.typeinfo.NotFoundException;
 import com.google.gwt.core.ext.typeinfo.TypeOracle;
 
 /**
  * @author Mike Brock
  */
 public class QualifierEqualityFactoryGenerator extends Generator {
-  
+
   private static final Logger log = LoggerFactory.getLogger(QualifierEqualityFactoryGenerator.class);
-  
+
   @Override
   public String generate(final TreeLogger logger, final GeneratorContext context, final String typeName)
       throws UnableToCompleteException {
@@ -111,23 +117,13 @@ public class QualifierEqualityFactoryGenerator extends Generator {
 
     final ConstructorBlockBuilder<? extends ClassStructureBuilder<?>> constrBuilder = builder.publicConstructor();
 
-    final MetaDataScanner scanner = ScannerSingleton.getOrCreateInstance();
-    final Set<Class<?>> typesAnnotatedWith = scanner.getTypesAnnotatedWith(Qualifier.class);
-    typesAnnotatedWith.add(Named.class);
+    for (final MetaClass MC_annotationClass : TranslatableAnnotationUtils.getTranslatableQualifiers(oracle)) {
+      final Collection<MetaMethod> methods = CDIAnnotationUtils.getAnnotationAttributes(MC_annotationClass);
 
-    for (final Class<?> aClass : typesAnnotatedWith) {
-      try {
-        final MetaClass MC_annotationClass = GWTClass.newInstance(oracle, oracle.getType(aClass.getName()));
-        final Collection<MetaMethod> methods = getAnnotationAttributes(MC_annotationClass);
+      if (methods.isEmpty()) continue;
 
-        if (methods.isEmpty()) continue;
-
-        constrBuilder._(Stmt.loadVariable(COMPARATOR_MAP_VAR)
-            .invoke("put", aClass.getName(), generateComparatorFor(MC_annotationClass, methods)));
-      }
-      catch (NotFoundException e) {
-        // ignore.
-      }
+      constrBuilder._(Stmt.loadVariable(COMPARATOR_MAP_VAR)
+          .invoke("put", MC_annotationClass.getFullyQualifiedName(), generateComparatorFor(MC_annotationClass, methods)));
     }
 
     // finish constructor
@@ -172,26 +168,12 @@ public class QualifierEqualityFactoryGenerator extends Generator {
 
     final String csq = builder.toJavaString();
 
-    final File fileCacheDir = RebindUtils.getErraiCacheDir();
-    final File cacheFile = new File(fileCacheDir.getAbsolutePath() + "/" + className + ".java");
-    RebindUtils.writeStringToFile(cacheFile, csq);
+    RebindUtils.writeStringToJavaSourceFileInErraiCacheDir(packageName, className, csq);
 
     printWriter.append(csq);
 
     log.info("Generated QualifierEqualityFactory in " + (System.currentTimeMillis() - start) + "ms");
     generatorContext.commit(logger, printWriter);
-  }
-
-  private static Collection<MetaMethod> getAnnotationAttributes(final MetaClass MC_annotationClass) {
-    final List<MetaMethod> methods = new ArrayList<MetaMethod>();
-    for (final MetaMethod method : MC_annotationClass.getDeclaredMethods()) {
-      if (method.isAnnotationPresent(Nonbinding.class) || method.isPrivate() || method.isProtected()
-          || method.getName().equals("equals") ||
-          method.getName().equals("hashCode")) continue;
-
-      methods.add(method);
-    }
-    return methods;
   }
 
   private Statement generateComparatorFor(final MetaClass MC_annotationClass, final Collection<MetaMethod> methods) {
